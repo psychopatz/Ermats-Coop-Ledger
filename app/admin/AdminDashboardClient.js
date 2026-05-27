@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import MembersWorkspace from '@/components/admin/MembersWorkspace';
 import LoansWorkspace from '@/components/admin/LoansWorkspace';
 import AuditsWorkspace from '@/components/admin/AuditsWorkspace';
@@ -23,8 +24,8 @@ const DEFAULT_MEMBER_FORM = {
   access_code: '',
 };
 
-export default function AdminDashboardClient({ initialData, today }) {
-  const { members, loans, audits, payments } = initialData;
+export default function AdminDashboardClient() {
+  const { members, loans, audits, payments, today } = useAdminWorkspace();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('members');
   const [memberForm, setMemberForm] = useState(DEFAULT_MEMBER_FORM);

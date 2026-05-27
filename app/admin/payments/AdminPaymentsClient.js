@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import { groupPaymentsByPeriod, parseAmount } from '@/lib/domain/payments';
 
 function formatRepaymentStatus(status) {
@@ -39,8 +40,8 @@ function createPaymentForm(today) {
   };
 }
 
-export default function AdminPaymentsClient({ initialData, today }) {
-  const { members, loans, payments } = initialData;
+export default function AdminPaymentsClient() {
+  const { members, loans, payments, today } = useAdminWorkspace();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
