@@ -31,7 +31,7 @@ export default function MemberShell({ session, children }) {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-6 min-w-0">
             <div className="flex flex-wrap items-center gap-3 min-w-0">
               <Link href="/" className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-300 via-cyan-200 to-indigo-200">
-                Coop Ledger
+               Obong ES Coop Ledger
               </Link>
               <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-400/20 text-[10px] text-cyan-300 font-semibold uppercase tracking-wider">
                 Member Portal

@@ -18,7 +18,7 @@ export default function Home() {
         {/* Title */}
         <div className="space-y-4">
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 via-purple-300 to-indigo-100">
-            Coop Ledger
+            Obong ES Coop Ledger
           </h1>
           <p className="text-lg md:text-xl text-slate-400 max-w-xl mx-auto">
             A cooperative loan ledger system. Lightweight, responsive, and backed entirely by Google Sheets.

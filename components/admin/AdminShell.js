@@ -28,7 +28,7 @@ export default function AdminShell({ session, children }) {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-6 min-w-0">
             <div className="flex flex-wrap items-center gap-3 min-w-0">
               <Link href="/" className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">
-                Coop Ledger
+                Obong ES Coop Ledger
               </Link>
               <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-400 font-semibold uppercase tracking-wider">
                 Admin Workspace
