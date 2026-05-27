@@ -48,6 +48,14 @@ body::selection {
   mask-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
 }
 
+.portal-ambient-overlay {
+  background:
+    radial-gradient(circle at top left, rgba(167, 243, 208, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(217, 231, 207, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(7, 14, 20, 0.22), rgba(7, 14, 20, 0.48) 30%, rgba(7, 14, 20, 0.88) 100%);
+  backdrop-filter: blur(6px);
+}
+
 .glass-surface {
   background:
     linear-gradient(145deg, rgba(167, 243, 208, 0.06), transparent 34%),
@@ -205,5 +213,48 @@ body::selection {
 
   .portal-window-focus {
     filter: none;
+  }
+}
+
+@media (pointer: coarse), (max-width: 820px) {
+  .portal-scenic-image {
+    filter: saturate(0.68) contrast(0.96) brightness(0.56);
+    opacity: 0.76;
+    transform: none;
+    will-change: auto;
+    animation: none;
+  }
+
+  .portal-ambient-overlay,
+  .glass-surface,
+  .glass-chip,
+  [class*='backdrop-blur'] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .portal-grid-overlay {
+    opacity: 0.04;
+  }
+
+  .glass-surface,
+  .hero-drift,
+  .portal-window-focus,
+  .portal-fade-up {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+    filter: none;
+    will-change: auto;
+  }
+
+  div[class*='blur-'] {
+    filter: none !important;
+  }
+
+  .glass-surface {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 16px 32px -26px rgba(4, 12, 24, 0.48);
   }
 }
