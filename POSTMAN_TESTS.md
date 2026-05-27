@@ -158,10 +158,41 @@ These endpoints are **admin-only**.
 ```
 
 *Notes:*
+- Admin-recorded payments are stored as approved immediately and update the linked loan balance right away.
 - `received_by` is now recorded from the authenticated admin session rather than trusted from the request body.
 - `payment_method` must be either `cash` or `gcash`.
+- `reference_code` is optional and useful for GCash receipts.
 
-### VOID an active payment
+### SUBMIT a member payment for approval
+- **Method:** `POST`
+- **URL:** `{{base_url}}/api/member/payments`
+- **Access:** Member session required
+- **Request Body (JSON):**
+```json
+{
+  "loan_id": "LOAN-000001",
+  "amount_received": 1000,
+  "payment_date": "2026-05-27",
+  "payment_method": "gcash",
+  "reference_code": "GCASH-REF-123456"
+}
+```
+
+*Notes:*
+- Member-submitted payments are stored with `status: pending_approval`.
+- Pending submissions do not update loan balances until an admin approves them.
+- `reference_code` is optional for `cash` and recommended for `gcash`.
+
+### APPROVE a pending member payment
+- **Method:** `PATCH`
+- **URL:** `{{base_url}}/api/payments/PAY-000001/approve`
+- **Access:** Admin session required
+
+*Notes:*
+- Only `pending_approval` records can be approved.
+- Approval updates the payment to `approved`, assigns `received_by` from the admin session, and applies the amount to the linked loan balance.
+
+### VOID a payment
 - **Method:** `PATCH`
 - **URL:** `{{base_url}}/api/payments/PAY-000001/void`
 - **Access:** Admin session required
@@ -171,6 +202,10 @@ These endpoints are **admin-only**.
   "void_reason": "Double entry error"
 }
 ```
+
+*Notes:*
+- Voiding an approved payment reverts the linked loan balance.
+- Voiding a pending payment cancels the submission without changing the loan balance.
 
 ## 5. Audit Endpoints
 

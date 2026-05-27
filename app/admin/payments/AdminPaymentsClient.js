@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import { groupPaymentsByPeriod, parseAmount } from '@/lib/domain/payments';
 
+function formatRecordStatus(status) {
+  if (status === 'pending_approval') {
+    return 'Pending Approval';
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function formatRepaymentStatus(status) {
   if (status === 'not_paid') {
     return 'Not Paid';
@@ -26,6 +34,10 @@ function getRepaymentStatusClass(status) {
 }
 
 function getRecordStatusClass(status) {
+  if (status === 'pending_approval') {
+    return 'bg-cyan-500/10 border border-cyan-400/30 text-cyan-200';
+  }
+
   return status === 'voided'
     ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
     : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
@@ -76,8 +88,12 @@ export default function AdminPaymentsClient() {
 
   const groupedPayments = groupPaymentsByPeriod(visiblePayments, groupBy);
   const collectedAmount = visiblePayments
-    .filter((payment) => payment.record_status !== 'voided')
+    .filter((payment) => payment.record_status === 'approved')
     .reduce((sum, payment) => sum + parseAmount(payment.amount_received), 0);
+  const pendingAmount = visiblePayments
+    .filter((payment) => payment.record_status === 'pending_approval')
+    .reduce((sum, payment) => sum + parseAmount(payment.amount_received), 0);
+  const pendingCount = visiblePayments.filter((payment) => payment.record_status === 'pending_approval').length;
   const voidedCount = visiblePayments.filter((payment) => payment.record_status === 'voided').length;
 
   const refreshWorkspace = () => {
@@ -167,6 +183,16 @@ export default function AdminPaymentsClient() {
     }
   };
 
+  const handleApprovePayment = async (paymentId) => {
+    await submitRequest(
+      `/api/payments/${paymentId}/approve`,
+      {
+        method: 'PATCH',
+      },
+      'Failed to approve payment.'
+    );
+  };
+
   return (
     <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <section className="grid gap-4 md:grid-cols-4">
@@ -176,19 +202,19 @@ export default function AdminPaymentsClient() {
           <p className="text-xs text-slate-500 mt-2">Filtered by your current controls</p>
         </div>
         <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Collected Amount</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Approved Amount</p>
           <p className="text-3xl font-bold text-emerald-400 mt-2">${collectedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          <p className="text-xs text-slate-500 mt-2">Excludes voided entries</p>
+          <p className="text-xs text-slate-500 mt-2">Already reflected in official balances</p>
+        </div>
+        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Approval</p>
+          <p className="text-3xl font-bold text-cyan-200 mt-2">{pendingCount}</p>
+          <p className="text-xs text-slate-500 mt-2">${pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} waiting for review</p>
         </div>
         <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Voided Entries</p>
           <p className="text-3xl font-bold text-rose-400 mt-2">{voidedCount}</p>
           <p className="text-xs text-slate-500 mt-2">Transactions reversed from the ledger</p>
-        </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Grouping Mode</p>
-          <p className="text-3xl font-bold text-purple-300 mt-2 capitalize">{groupBy}</p>
-          <p className="text-xs text-slate-500 mt-2">Switch between year, month, and week</p>
         </div>
       </section>
 
@@ -264,7 +290,8 @@ export default function AdminPaymentsClient() {
                   className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
                 >
                   <option value="all">All Records</option>
-                  <option value="active">Active</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending_approval">Pending Approval</option>
                   <option value="voided">Voided</option>
                 </select>
               </label>
@@ -285,14 +312,15 @@ export default function AdminPaymentsClient() {
                     <th className="px-5 py-3">Total Amount</th>
                     <th className="px-5 py-3">Cash</th>
                     <th className="px-5 py-3">GCash</th>
-                    <th className="px-5 py-3">Active</th>
+                    <th className="px-5 py-3">Approved</th>
+                    <th className="px-5 py-3">Pending</th>
                     <th className="px-5 py-3">Voided</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900">
                   {groupedPayments.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-5 py-8 text-center text-slate-500 text-sm">
+                      <td colSpan="8" className="px-5 py-8 text-center text-slate-500 text-sm">
                         No payments match the current filters.
                       </td>
                     </tr>
@@ -304,7 +332,8 @@ export default function AdminPaymentsClient() {
                         <td className="px-5 py-3.5 font-medium text-emerald-400">${group.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         <td className="px-5 py-3.5">{group.cash_count}</td>
                         <td className="px-5 py-3.5">{group.gcash_count}</td>
-                        <td className="px-5 py-3.5">{group.active_count}</td>
+                        <td className="px-5 py-3.5">{group.approved_count}</td>
+                        <td className="px-5 py-3.5">{group.pending_count}</td>
                         <td className="px-5 py-3.5">{group.voided_count}</td>
                       </tr>
                     ))
@@ -328,6 +357,7 @@ export default function AdminPaymentsClient() {
                     <th className="px-5 py-3">Date</th>
                     <th className="px-5 py-3">Amount</th>
                     <th className="px-5 py-3">Method</th>
+                    <th className="px-5 py-3">Reference Code</th>
                     <th className="px-5 py-3">Repayment</th>
                     <th className="px-5 py-3">Record</th>
                     <th className="px-5 py-3 text-right">Actions</th>
@@ -336,7 +366,7 @@ export default function AdminPaymentsClient() {
                 <tbody className="divide-y divide-slate-900">
                   {visiblePayments.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-5 py-8 text-center text-slate-500 text-sm">
+                      <td colSpan="10" className="px-5 py-8 text-center text-slate-500 text-sm">
                         No payments match the current filters.
                       </td>
                     </tr>
@@ -355,6 +385,7 @@ export default function AdminPaymentsClient() {
                           <td className="px-5 py-3.5 text-xs text-slate-400">{payment.payment_date}</td>
                           <td className="px-5 py-3.5 font-medium text-xs">${parseAmount(payment.amount_received).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           <td className="px-5 py-3.5 text-xs uppercase text-slate-300">{payment.payment_method}</td>
+                          <td className="px-5 py-3.5 font-mono text-xs text-slate-400">{payment.reference_code || 'N/A'}</td>
                           <td className="px-5 py-3.5 text-xs">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRepaymentStatusClass(payment.repayment_status)}`}>
                               {formatRepaymentStatus(payment.repayment_status)}
@@ -362,21 +393,33 @@ export default function AdminPaymentsClient() {
                           </td>
                           <td className="px-5 py-3.5 text-xs">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRecordStatusClass(payment.record_status)}`}>
-                              {payment.record_status}
+                              {formatRecordStatus(payment.record_status)}
                             </span>
                           </td>
                           <td className="px-5 py-3.5 text-right">
-                            {payment.record_status === 'active' && (
-                              <button
-                                onClick={() => {
-                                  setVoidPaymentId(payment.payment_id);
-                                  setError('');
-                                }}
-                                className="text-xs text-rose-500 hover:text-rose-400 font-semibold cursor-pointer"
-                              >
-                                Void
-                              </button>
-                            )}
+                            <div className="flex items-center justify-end gap-3">
+                              {payment.record_status === 'pending_approval' && (
+                                <button
+                                  onClick={() => handleApprovePayment(payment.payment_id)}
+                                  disabled={isBusy}
+                                  className="text-xs text-cyan-300 hover:text-cyan-200 font-semibold disabled:opacity-50 cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {payment.record_status !== 'voided' && (
+                                <button
+                                  onClick={() => {
+                                    setVoidPaymentId(payment.payment_id);
+                                    setError('');
+                                  }}
+                                  disabled={isBusy}
+                                  className="text-xs text-rose-500 hover:text-rose-400 font-semibold disabled:opacity-50 cursor-pointer"
+                                >
+                                  Void
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

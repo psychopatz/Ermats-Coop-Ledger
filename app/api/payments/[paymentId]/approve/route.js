@@ -1,12 +1,11 @@
-// app/api/payments/[paymentId]/void/route.js
 import { NextResponse } from 'next/server';
 import { updateRow } from '@/lib/googleSheets';
-import { writeAuditLog } from '@/lib/auditLog';
 import { isSettledPaymentStatus } from '@/lib/domain/payments';
+import { writeAuditLog } from '@/lib/auditLog';
 import { listLoans, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession } from '@/lib/session';
 
-export async function PATCH(request, { params }) {
+export async function PATCH(_request, { params }) {
   try {
     const adminSession = await getAdminSession();
     if (!adminSession) {
@@ -14,20 +13,8 @@ export async function PATCH(request, { params }) {
     }
 
     const { paymentId } = await params;
-    const body = await request.json();
-    const { void_reason } = body;
-
-    // Validate inputs
-    if (!void_reason) {
-      return NextResponse.json(
-        { error: 'Required fields missing. Provide: void_reason.' },
-        { status: 400 }
-      );
-    }
-
-    // 1. Fetch payment
     const [payments, loans] = await Promise.all([listPayments(), listLoans()]);
-    const existingPayment = payments.find((p) => p.payment_id === paymentId);
+    const existingPayment = payments.find((payment) => payment.payment_id === paymentId);
 
     if (!existingPayment) {
       return NextResponse.json(
@@ -36,16 +23,14 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (existingPayment.status === 'voided') {
+    if (existingPayment.status !== 'pending_approval') {
       return NextResponse.json(
-        { error: 'This payment is already voided.' },
+        { error: 'Only pending member payments can be approved.' },
         { status: 400 }
       );
     }
 
-    // 2. Fetch associated loan
-    const loan = loans.find((l) => l.loan_id === existingPayment.loan_id);
-
+    const loan = loans.find((entry) => entry.loan_id === existingPayment.loan_id);
     if (!loan) {
       return NextResponse.json(
         { error: `Associated loan with ID "${existingPayment.loan_id}" not found.` },
@@ -53,58 +38,57 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const now = new Date().toISOString();
+    if (loan.status === 'paid' || parseFloat(loan.balance) <= 0) {
+      return NextResponse.json(
+        { error: 'This loan is already closed and can no longer accept approved payments.' },
+        { status: 400 }
+      );
+    }
 
-    // 3. Mark payment as voided
+    const now = new Date().toISOString();
+    const amount = parseFloat(existingPayment.amount_received);
+    const currentBalance = parseFloat(loan.balance);
+    let newBalance = currentBalance - amount;
+    let loanStatus = loan.status;
+
+    if (newBalance <= 0) {
+      newBalance = 0;
+      loanStatus = 'paid';
+    }
+
     const updatedPayment = {
       ...existingPayment,
-      status: 'voided',
+      status: 'approved',
+      received_by: adminSession.email,
+      updated_at: now,
+    };
+    const updatedLoan = {
+      ...loan,
+      balance: newBalance,
+      status: loanStatus,
       updated_at: now,
     };
 
-    const amountReversed = parseFloat(existingPayment.amount_received);
-    const currentBalance = parseFloat(loan.balance);
-    let updatedLoan = null;
-    let newBalance = currentBalance;
-    let loanStatus = loan.status;
-
-    if (isSettledPaymentStatus(existingPayment.status)) {
-      newBalance = currentBalance + amountReversed;
-
-      if (loanStatus === 'paid' || newBalance > 0) {
-        loanStatus = 'active';
-      }
-
-      updatedLoan = {
-        ...loan,
-        balance: newBalance,
-        status: loanStatus,
-        updated_at: now,
-      };
-    }
-
-    // 5. Commit updates
     await updateRow('Payments', existingPayment._rowNumber, updatedPayment);
-    if (updatedLoan) {
-      await updateRow('Loans', loan._rowNumber, updatedLoan);
-    }
+    await updateRow('Loans', loan._rowNumber, updatedLoan);
 
-    // 6. Write audit logs
     await writeAuditLog({
       actorEmail: adminSession.email,
-      action: 'VOID_PAYMENT',
+      action: 'APPROVE_MEMBER_PAYMENT',
       entityType: 'Payments',
       entityId: paymentId,
       details: {
         loan_id: existingPayment.loan_id,
-        amount_reversed: amountReversed,
-        void_reason,
+        member_id: existingPayment.member_id,
+        amount_received: amount,
+        payment_method: existingPayment.payment_method,
+        reference_code: existingPayment.reference_code,
       },
     });
 
     await writeAuditLog({
       actorEmail: adminSession.email,
-      action: 'REVERT_LOAN_BALANCE_VOID',
+      action: 'UPDATE_LOAN_BALANCE',
       entityType: 'Loans',
       entityId: existingPayment.loan_id,
       details: {
@@ -112,16 +96,16 @@ export async function PATCH(request, { params }) {
         previous_balance: currentBalance,
         new_balance: newBalance,
         status: loanStatus,
-        balance_updated: Boolean(updatedLoan),
+        approved_from_pending: !isSettledPaymentStatus(existingPayment.status),
       },
     });
 
     const { _rowNumber, ...sanitizedPayment } = updatedPayment;
     return NextResponse.json(sanitizedPayment);
   } catch (error) {
-    console.error('PATCH /api/payments/[paymentId]/void error:', error);
+    console.error('PATCH /api/payments/[paymentId]/approve error:', error);
     return NextResponse.json(
-      { error: 'Failed to void payment: ' + error.message },
+      { error: 'Failed to approve payment: ' + error.message },
       { status: 500 }
     );
   }

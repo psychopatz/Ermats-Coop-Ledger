@@ -56,6 +56,7 @@ const SCHEMA = {
     'created_at',
     'updated_at',
     'payment_method',
+    'reference_code',
   ],
   Audit_Log: ['audit_id', 'timestamp', 'actor_email', 'action', 'entity_type', 'entity_id', 'details'],
 };

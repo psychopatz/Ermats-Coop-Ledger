@@ -1,7 +1,13 @@
 // app/api/payments/route.js
 import { NextResponse } from 'next/server';
 import { appendRow, updateRow } from '@/lib/googleSheets';
-import { enrichLoans, enrichPayments, PAYMENT_METHODS } from '@/lib/domain/payments';
+import {
+  enrichLoans,
+  enrichPayments,
+  isSettledPaymentStatus,
+  normalizeReferenceCode,
+  PAYMENT_METHODS,
+} from '@/lib/domain/payments';
 import { generatePaymentId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
 import { listLoans, listMembers, listPayments } from '@/lib/repositories/ledgerRepository';
@@ -57,7 +63,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { loan_id, member_id, amount_received, payment_date, payment_method } = body;
+    const { loan_id, member_id, amount_received, payment_date, payment_method, reference_code } = body;
 
     // Validate presence of required inputs
     if (
@@ -84,6 +90,7 @@ export async function POST(request) {
     }
 
     const normalizedMethod = String(payment_method).trim().toLowerCase();
+    const normalizedReferenceCode = normalizeReferenceCode(reference_code);
     if (!PAYMENT_METHODS.includes(normalizedMethod)) {
       return NextResponse.json(
         { error: `payment_method must be one of: ${PAYMENT_METHODS.join(', ')}.` },
@@ -131,10 +138,11 @@ export async function POST(request) {
       payment_date,
       amount_received: amount,
       received_by: adminSession.email,
-      status: 'active',
+      status: 'approved',
       created_at: now,
       updated_at: now,
       payment_method: normalizedMethod,
+      reference_code: normalizedReferenceCode,
     };
 
     // Calculate new balance
@@ -164,7 +172,13 @@ export async function POST(request) {
       action: 'RECORD_PAYMENT',
       entityType: 'Payments',
       entityId: payment_id,
-      details: { loan_id, member_id, amount_received: amount, payment_method: normalizedMethod },
+      details: {
+        loan_id,
+        member_id,
+        amount_received: amount,
+        payment_method: normalizedMethod,
+        reference_code: normalizedReferenceCode,
+      },
     });
 
     // Audit logging for loan state change
