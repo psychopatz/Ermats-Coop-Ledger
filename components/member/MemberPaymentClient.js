@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMemberWorkspace } from '@/components/member/MemberWorkspaceProvider';
 import { formatCurrency, formatRecordStatus, getRecordStatusClass } from '@/components/member/memberUi';
@@ -16,17 +16,53 @@ function createPaymentForm(today, defaultLoanId) {
   };
 }
 
+function normalizeOcrCandidate(candidate) {
+  return candidate
+    .replace(/[Oo]/g, '0')
+    .replace(/[^0-9\s-]/g, '')
+    .replace(/[-\s]+/g, ' ')
+    .trim();
+}
+
+function extractReferenceCodeFromText(text) {
+  const compactText = String(text || '')
+    .replace(/\r/g, '\n')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const labeledMatch = compactText.match(/ref(?:erence)?\s*(?:no|number)?\.?\s*[:#-]?\s*([0-9Oo][0-9Oo\s-]{6,24})/i);
+  if (labeledMatch) {
+    return normalizeOcrCandidate(labeledMatch[1]);
+  }
+
+  const groupedMatch = compactText.match(/\b[0-9Oo]{3,4}(?:[\s-][0-9Oo]{3,4}){1,4}\b/);
+  if (groupedMatch) {
+    return normalizeOcrCandidate(groupedMatch[0]);
+  }
+
+  const denseMatch = compactText.match(/\b[0-9Oo]{10,16}\b/);
+  if (denseMatch) {
+    return normalizeOcrCandidate(denseMatch[0]);
+  }
+
+  return '';
+}
+
 export default function MemberPaymentClient() {
   const { availableLoans, pendingPayments, today, syncStatus, dispatch } = useMemberWorkspace();
   const router = useRouter();
+  const ocrInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRunningOcr, setIsRunningOcr] = useState(false);
   const [error, setError] = useState('');
+  const [ocrMessage, setOcrMessage] = useState('');
   const [paymentForm, setPaymentForm] = useState(() => createPaymentForm(today, availableLoans[0]?.loan_id));
 
   const selectedLoan = availableLoans.find((loan) => loan.loan_id === paymentForm.loan_id);
-  const isBusy = isSubmitting || syncStatus.state === 'saving';
+  const isBusy = isSubmitting || isRunningOcr || syncStatus.state === 'saving';
 
   const setPaymentMethod = (paymentMethod) => {
+    setOcrMessage('');
     setPaymentForm((current) => ({
       ...current,
       payment_method: paymentMethod,
@@ -79,6 +115,7 @@ export default function MemberPaymentClient() {
     });
 
     setError('');
+    setOcrMessage('');
     setIsSubmitting(true);
 
     try {
@@ -138,6 +175,43 @@ export default function MemberPaymentClient() {
     }
   };
 
+  const handleOcrFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setError('');
+    setOcrMessage('Reading receipt locally in your browser...');
+    setIsRunningOcr(true);
+
+    try {
+      const tesseractModule = await import('tesseract.js');
+      const result = await tesseractModule.recognize(file, 'eng', {
+        logger: () => {},
+      });
+      const extractedCode = extractReferenceCodeFromText(result.data?.text || '');
+
+      if (!extractedCode) {
+        throw new Error('No GCash reference number was detected. You can still type it manually.');
+      }
+
+      setPaymentForm((current) => ({
+        ...current,
+        reference_code: extractedCode,
+      }));
+      setOcrMessage(`Reference code extracted locally: ${extractedCode}`);
+    } catch (ocrError) {
+      setError(ocrError.message || 'Failed to read the receipt image.');
+      setOcrMessage('');
+    } finally {
+      setIsRunningOcr(false);
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
   return (
     <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <section className="grid xl:grid-cols-[1.1fr_0.9fr] gap-8">
@@ -155,6 +229,12 @@ export default function MemberPaymentClient() {
           {error && (
             <div className="p-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-sm">
               {error}
+            </div>
+          )}
+
+          {ocrMessage && !error && (
+            <div className="p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-100 text-sm">
+              {ocrMessage}
             </div>
           )}
 
@@ -237,6 +317,21 @@ export default function MemberPaymentClient() {
               <label className="space-y-1.5 text-sm block">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Reference Code</span>
                 <input
+                  ref={ocrInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleOcrFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => ocrInputRef.current?.click()}
+                  disabled={isBusy}
+                  className="w-full py-3 px-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 text-cyan-100 hover:bg-cyan-400/10 transition-colors text-sm font-semibold disabled:opacity-50 cursor-pointer"
+                >
+                  {isRunningOcr ? 'Scanning Receipt Locally...' : 'Extract From GCash Screenshot'}
+                </button>
+                <input
                   type="text"
                   required
                   value={paymentForm.reference_code}
@@ -246,7 +341,7 @@ export default function MemberPaymentClient() {
                   className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-400"
                 />
                 <p className="text-xs text-slate-500 leading-5">
-                  Copy the reference number from your GCash receipt so the admin can verify it manually.
+                  OCR runs locally in your browser. Review the detected value and edit it if the scan is imperfect.
                 </p>
               </label>
             )}

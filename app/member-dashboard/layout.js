@@ -4,6 +4,9 @@ import { getMemberDashboardData } from '@/lib/services/dashboardData';
 import MemberShell from '@/components/member/MemberShell';
 import { MemberWorkspaceProvider } from '@/components/member/MemberWorkspaceProvider';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export default async function MemberDashboardLayout({ children }) {
   const session = await getMemberSession();
 

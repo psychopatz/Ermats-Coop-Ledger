@@ -6,6 +6,9 @@ import { writeAuditLog } from '@/lib/auditLog';
 import { listLoans, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession, getSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function GET(request, { params }) {
   try {
     const session = await getSession();

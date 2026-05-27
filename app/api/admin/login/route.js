@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { setSessionCookie } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 function safeCompare(left, right) {
   const leftBuffer = Buffer.from(left || '');
   const rightBuffer = Buffer.from(right || '');

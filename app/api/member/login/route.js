@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { listMembers } from '@/lib/repositories/ledgerRepository';
 import { setSessionCookie } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function POST(request) {
   try {
     const body = await request.json();

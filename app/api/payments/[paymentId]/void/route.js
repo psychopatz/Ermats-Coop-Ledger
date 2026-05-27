@@ -6,6 +6,9 @@ import { isSettledPaymentStatus } from '@/lib/domain/payments';
 import { listLoans, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function PATCH(request, { params }) {
   try {
     const adminSession = await getAdminSession();

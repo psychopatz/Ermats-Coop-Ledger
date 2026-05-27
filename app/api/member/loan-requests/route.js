@@ -5,6 +5,9 @@ import { generateLoanRequestId } from '@/lib/ids';
 import { listLoanRequests, listLoans } from '@/lib/repositories/ledgerRepository';
 import { getMemberSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 function hasActiveLoan(loans, memberId) {
   return loans.some((loan) => {
     if (loan.member_id !== memberId) {

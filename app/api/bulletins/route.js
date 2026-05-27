@@ -5,6 +5,9 @@ import { generateBulletinId } from '@/lib/ids';
 import { listBulletins } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function POST(request) {
   try {
     const adminSession = await getAdminSession();

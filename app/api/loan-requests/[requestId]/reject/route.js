@@ -4,6 +4,9 @@ import { writeAuditLog } from '@/lib/auditLog';
 import { listLoanRequests } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession } from '@/lib/session';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function PATCH(request, { params }) {
   try {
     const adminSession = await getAdminSession();

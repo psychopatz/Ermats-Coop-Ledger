@@ -7,6 +7,9 @@ import { sanitizeMember } from '@/lib/domain/members';
 import { getAdminSession } from '@/lib/session';
 import { listMembers } from '@/lib/repositories/ledgerRepository';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function GET() {
   try {
     const adminSession = await getAdminSession();

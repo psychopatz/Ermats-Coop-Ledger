@@ -4,6 +4,9 @@ import { getAdminWorkspaceData } from '@/lib/services/dashboardData';
 import AdminShell from '@/components/admin/AdminShell';
 import { AdminWorkspaceProvider } from '@/components/admin/AdminWorkspaceProvider';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export default async function AdminLayout({ children }) {
   const session = await getAdminSession();
 

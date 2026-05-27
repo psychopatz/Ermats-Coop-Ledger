@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/session';
 import { listAuditLogs } from '@/lib/repositories/ledgerRepository';
 
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
 export async function GET() {
   try {
     const adminSession = await getAdminSession();

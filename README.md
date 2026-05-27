@@ -1,6 +1,6 @@
 # Coop Ledger - Cooperative Loan Ledger
 
-A testing web application for a cooperative loan ledger system. This application uses Google Sheets as its server-side database through server-side Next.js API routes. 
+A web application for a cooperative loan ledger system. This application uses Google Sheets as its server-side database through server-side Next.js API routes. 
 
 ## Features
 - **Zero-DB Hosting:** No Supabase, Firebase, or SQL database required—runs entirely on Google Sheets.
