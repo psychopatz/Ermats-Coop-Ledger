@@ -8,24 +8,29 @@ import {
   getRecordStatusClass,
   getRepaymentStatusClass,
 } from '@/components/member/memberUi';
+import {
+  memberMetricCardClassName,
+  memberPageClassName,
+  memberTableCardClassName,
+} from '@/components/member/memberTheme';
 
 export default function MemberPaymentHistoryClient() {
   const { payments, summary } = useMemberWorkspace();
 
   return (
-    <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <main className={memberPageClassName}>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Approved Amount</p>
           <p className="text-3xl font-bold text-emerald-300 mt-3">${formatCurrency(summary.approved_amount)}</p>
           <p className="text-sm text-slate-500 mt-2">Already reflected in your official balance</p>
         </div>
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pending Count</p>
           <p className="text-3xl font-bold text-cyan-200 mt-3">{summary.pending_count}</p>
           <p className="text-sm text-slate-500 mt-2">Awaiting admin review</p>
         </div>
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Voided Entries</p>
           <p className="text-3xl font-bold text-rose-300 mt-3">{summary.voided_count}</p>
           <p className="text-sm text-slate-500 mt-2">Rejected or reversed payment records</p>
@@ -39,7 +44,7 @@ export default function MemberPaymentHistoryClient() {
             <p className="text-slate-400 mt-2">Review every approved, pending, and voided payment with its method and reference code.</p>
           </div>
         </div>
-        <div className="border border-slate-900 rounded-[28px] bg-slate-950/80 overflow-hidden">
+        <div className={memberTableCardClassName}>
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900/60 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">

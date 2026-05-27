@@ -4,6 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMemberWorkspace } from '@/components/member/MemberWorkspaceProvider';
 import { formatCurrency } from '@/components/member/memberUi';
+import {
+  memberFieldClassName,
+  memberHeroPanelClassName,
+  memberInfoCardClassName,
+  memberMetricCardClassName,
+  memberPageClassName,
+  memberPrimaryButtonClassName,
+  memberTableCardClassName,
+} from '@/components/member/memberTheme';
 import { createOptimisticId } from '@/lib/domain/workspaceState';
 
 function createLoanRequestForm(today) {
@@ -145,19 +154,19 @@ export default function MemberLoanRequestClient() {
   };
 
   return (
-    <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <main className={memberPageClassName}>
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Active Loan</p>
           <p className="text-3xl font-bold text-slate-100 mt-3">{activeLoan ? activeLoan.loan_id : 'None'}</p>
           <p className="text-sm text-slate-500 mt-2">New loan requests are blocked while a balance is still unpaid.</p>
         </div>
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pending Requests</p>
           <p className="text-3xl font-bold text-cyan-200 mt-3">{summary.pending_loan_request_count}</p>
           <p className="text-sm text-slate-500 mt-2">Only admin-approved requests become actual loans.</p>
         </div>
-        <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
+        <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Request History</p>
           <p className="text-3xl font-bold text-indigo-200 mt-3">{loanRequests.length}</p>
           <p className="text-sm text-slate-500 mt-2">Newest requests appear first.</p>
@@ -165,11 +174,9 @@ export default function MemberLoanRequestClient() {
       </section>
 
       <section className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8">
-        <div className="p-6 sm:p-8 rounded-[30px] border border-cyan-400/10 bg-slate-950/70 backdrop-blur-xl space-y-6">
+        <div className={memberHeroPanelClassName}>
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-cyan-200 text-xs font-semibold uppercase tracking-[0.24em]">
-              Loan Request
-            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Loan Request</p>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-50">Request a new loan for admin review.</h1>
             <p className="text-slate-400 leading-7">
               Requests stay pending until the admin reviews and approves them. A new loan cannot be issued while an older one still has an unpaid balance.
@@ -207,7 +214,7 @@ export default function MemberLoanRequestClient() {
                   onChange={(event) => setForm({ ...form, requested_amount: event.target.value })}
                   disabled={isBusy || isBlocked}
                   placeholder="10000"
-                  className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-400"
+                  className={memberFieldClassName}
                 />
               </label>
               <label className="space-y-1.5 text-sm">
@@ -219,7 +226,7 @@ export default function MemberLoanRequestClient() {
                   value={form.requested_term_months}
                   onChange={(event) => setForm({ ...form, requested_term_months: event.target.value })}
                   disabled={isBusy || isBlocked}
-                  className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-cyan-400"
+                  className={memberFieldClassName}
                 />
               </label>
             </div>
@@ -232,7 +239,7 @@ export default function MemberLoanRequestClient() {
                 value={form.preferred_release_date}
                 onChange={(event) => setForm({ ...form, preferred_release_date: event.target.value })}
                 disabled={isBusy || isBlocked}
-                className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-cyan-400"
+                className={memberFieldClassName}
               />
             </label>
 
@@ -244,7 +251,7 @@ export default function MemberLoanRequestClient() {
                 disabled={isBusy || isBlocked}
                 rows={5}
                 placeholder="Optional context for the admin review"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm leading-6 placeholder-slate-600 resize-y focus:outline-none focus:border-cyan-400"
+                className={`${memberFieldClassName} min-h-32 resize-y leading-6`}
               />
             </label>
 
@@ -263,7 +270,7 @@ export default function MemberLoanRequestClient() {
             <button
               type="submit"
               disabled={isBusy || isBlocked}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-semibold transition-all disabled:opacity-50 cursor-pointer"
+              className={memberPrimaryButtonClassName}
             >
               {isBusy ? 'Submitting...' : 'Submit Loan Request'}
             </button>
@@ -271,14 +278,14 @@ export default function MemberLoanRequestClient() {
         </div>
 
         <div className="space-y-5">
-          <div className="p-6 rounded-[30px] border border-slate-900 bg-slate-950/70 space-y-3">
+          <div className={memberInfoCardClassName}>
             <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Approval Flow</p>
             <p className="text-sm text-slate-300 leading-6">
               Requests stay in pending review until the admin manually approves the terms. Only after approval will the request become a real loan inside your ledger.
             </p>
           </div>
 
-          <div className="border border-slate-900 rounded-[28px] bg-slate-950/80 overflow-hidden">
+          <div className={memberTableCardClassName}>
             <div className="p-5 border-b border-slate-900/80 bg-slate-900/50">
               <h2 className="text-lg font-bold text-slate-100">Request History</h2>
             </div>
