@@ -41,7 +41,16 @@ export async function POST(request) {
       );
     }
 
-    const normalizedReferenceCode = normalizeReferenceCode(reference_code);
+    const normalizedReferenceCode = normalizedMethod === 'gcash'
+      ? normalizeReferenceCode(reference_code)
+      : '';
+    if (normalizedMethod === 'gcash' && !normalizedReferenceCode) {
+      return NextResponse.json(
+        { error: 'reference_code is required for GCash payments.' },
+        { status: 400 }
+      );
+    }
+
     const [loans, payments] = await Promise.all([listLoans(), listPayments()]);
     const loan = loans.find((entry) => entry.loan_id === loan_id);
 

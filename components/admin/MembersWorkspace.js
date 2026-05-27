@@ -11,7 +11,7 @@ export default function MembersWorkspace({
       <div className="lg:col-span-2 space-y-4">
         <h3 className="text-xl font-bold text-slate-200">Registered Members</h3>
         <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900/50 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                 <tr>
@@ -62,6 +62,39 @@ export default function MembersWorkspace({
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="divide-y divide-slate-900 md:hidden">
+            {members.length === 0 ? (
+              <div className="px-5 py-8 text-center text-slate-500 text-sm">No members registered yet.</div>
+            ) : (
+              members.map((member) => (
+                <article key={member.member_id} className="p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm font-semibold text-slate-100">{member.member_id}</p>
+                      <p className="text-sm text-slate-200">{member.full_name}</p>
+                      <p className="text-xs text-slate-500">{member.email}</p>
+                    </div>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                      member.status === 'active'
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                        : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
+                    }`}>
+                      {member.status}
+                    </span>
+                  </div>
+                  {member.status === 'active' && (
+                    <button
+                      onClick={() => handleSoftDeleteMember(member.member_id)}
+                      disabled={actionLoading}
+                      className="text-sm text-rose-500 hover:text-rose-400 font-semibold disabled:opacity-50 cursor-pointer"
+                    >
+                      Deactivate
+                    </button>
+                  )}
+                </article>
+              ))
+            )}
           </div>
         </div>
       </div>

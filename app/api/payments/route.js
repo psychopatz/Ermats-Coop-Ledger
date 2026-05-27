@@ -90,10 +90,18 @@ export async function POST(request) {
     }
 
     const normalizedMethod = String(payment_method).trim().toLowerCase();
-    const normalizedReferenceCode = normalizeReferenceCode(reference_code);
+    const normalizedReferenceCode = normalizedMethod === 'gcash'
+      ? normalizeReferenceCode(reference_code)
+      : '';
     if (!PAYMENT_METHODS.includes(normalizedMethod)) {
       return NextResponse.json(
         { error: `payment_method must be one of: ${PAYMENT_METHODS.join(', ')}.` },
+        { status: 400 }
+      );
+    }
+    if (normalizedMethod === 'gcash' && !normalizedReferenceCode) {
+      return NextResponse.json(
+        { error: 'reference_code is required for GCash payments.' },
         { status: 400 }
       );
     }

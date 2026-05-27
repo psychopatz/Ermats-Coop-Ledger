@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMemberWorkspace } from '@/components/member/MemberWorkspaceProvider';
 import { formatCurrency, formatRecordStatus, getRecordStatusClass } from '@/components/member/memberUi';
+import { createOptimisticId } from '@/lib/domain/workspaceState';
 
 function createPaymentForm(today, defaultLoanId) {
   return {
@@ -16,31 +17,69 @@ function createPaymentForm(today, defaultLoanId) {
 }
 
 export default function MemberPaymentClient() {
-  const { availableLoans, pendingPayments, today } = useMemberWorkspace();
+  const { availableLoans, pendingPayments, today, syncStatus, dispatch } = useMemberWorkspace();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [paymentForm, setPaymentForm] = useState(() => createPaymentForm(today, availableLoans[0]?.loan_id));
 
-  const selectedLoan = useMemo(
-    () => availableLoans.find((loan) => loan.loan_id === paymentForm.loan_id),
-    [availableLoans, paymentForm.loan_id]
-  );
-  const isBusy = isPending || isSubmitting;
+  const selectedLoan = availableLoans.find((loan) => loan.loan_id === paymentForm.loan_id);
+  const isBusy = isSubmitting || syncStatus.state === 'saving';
 
-  const refreshWorkspace = () => {
-    startTransition(() => {
-      router.refresh();
-    });
+  const setPaymentMethod = (paymentMethod) => {
+    setPaymentForm((current) => ({
+      ...current,
+      payment_method: paymentMethod,
+      reference_code: paymentMethod === 'gcash' ? current.reference_code : '',
+    }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setIsSubmitting(true);
+
+    if (!selectedLoan) {
+      setError('Please select a valid loan account.');
+      return;
+    }
+
+    const amount = Number.parseFloat(paymentForm.amount_received);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Please enter a valid payment amount.');
+      return;
+    }
+
+    const normalizedReferenceCode = paymentForm.payment_method === 'gcash'
+      ? paymentForm.reference_code.trim()
+      : '';
+    if (paymentForm.payment_method === 'gcash' && !normalizedReferenceCode) {
+      setError('GCash payments require a reference code.');
+      return;
+    }
+
+    const optimisticId = createOptimisticId('member-payment');
+    const now = new Date().toISOString();
+
+    dispatch({
+      type: 'payment_submit_started',
+      payload: {
+        payment: {
+          payment_id: optimisticId,
+          loan_id: paymentForm.loan_id,
+          member_id: selectedLoan.member_id,
+          payment_date: paymentForm.payment_date,
+          amount_received: amount,
+          received_by: '',
+          status: 'pending_approval',
+          created_at: now,
+          updated_at: now,
+          payment_method: paymentForm.payment_method,
+          reference_code: normalizedReferenceCode,
+        },
+      },
+    });
+
     setError('');
-    setSuccessMessage('');
+    setIsSubmitting(true);
 
     try {
       const response = await fetch('/api/member/payments', {
@@ -48,17 +87,23 @@ export default function MemberPaymentClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           loan_id: paymentForm.loan_id,
-          amount_received: Number.parseFloat(paymentForm.amount_received),
+          amount_received: amount,
           payment_date: paymentForm.payment_date,
           payment_method: paymentForm.payment_method,
-          reference_code: paymentForm.reference_code,
+          reference_code: normalizedReferenceCode,
         }),
       });
       const data = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
+        dispatch({
+          type: 'payment_submit_failed',
+          payload: {
+            tempId: optimisticId,
+            message: 'Your member session expired. Please sign in again.',
+          },
+        });
         router.push('/member-login');
-        refreshWorkspace();
         return;
       }
 
@@ -66,11 +111,28 @@ export default function MemberPaymentClient() {
         throw new Error(data.error || 'Failed to submit payment.');
       }
 
-      setSuccessMessage('Payment submitted. It will appear as pending until an admin confirms it.');
-      setPaymentForm(createPaymentForm(today, paymentForm.loan_id || availableLoans[0]?.loan_id));
-      refreshWorkspace();
+      dispatch({
+        type: 'payment_submit_succeeded',
+        payload: {
+          tempId: optimisticId,
+          payment: data,
+        },
+      });
+
+      setPaymentForm({
+        ...createPaymentForm(today, paymentForm.loan_id || availableLoans[0]?.loan_id),
+        payment_method: paymentForm.payment_method,
+      });
     } catch (requestError) {
-      setError(requestError.message || 'Failed to submit payment.');
+      const message = requestError.message || 'Failed to submit payment.';
+      dispatch({
+        type: 'payment_submit_failed',
+        payload: {
+          tempId: optimisticId,
+          message,
+        },
+      });
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -96,9 +158,15 @@ export default function MemberPaymentClient() {
             </div>
           )}
 
-          {successMessage && (
-            <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-200 text-sm">
-              {successMessage}
+          {syncStatus.state !== 'idle' && !error && (
+            <div className={`p-4 rounded-2xl text-sm border ${
+              syncStatus.state === 'saved'
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+                : syncStatus.state === 'error'
+                  ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                  : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100'
+            }`}>
+              {syncStatus.message}
             </div>
           )}
 
@@ -126,7 +194,7 @@ export default function MemberPaymentClient() {
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Payment Method</span>
                 <select
                   value={paymentForm.payment_method}
-                  onChange={(event) => setPaymentForm({ ...paymentForm, payment_method: event.target.value })}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
                   disabled={isBusy}
                   className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-cyan-400"
                 >
@@ -165,22 +233,23 @@ export default function MemberPaymentClient() {
               </label>
             </div>
 
-            <label className="space-y-1.5 text-sm block">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Reference Code</span>
-              <input
-                type="text"
-                value={paymentForm.reference_code}
-                onChange={(event) => setPaymentForm({ ...paymentForm, reference_code: event.target.value })}
-                disabled={isBusy}
-                placeholder={paymentForm.payment_method === 'gcash' ? 'Example: 2045 667 982375' : 'Optional for cash receipts'}
-                className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-400"
-              />
-              <p className="text-xs text-slate-500 leading-5">
-                {paymentForm.payment_method === 'gcash'
-                  ? 'Copy the reference number from your GCash receipt so the admin can verify it manually.'
-                  : 'If you received a written cash acknowledgment, you can store it here for your own tracking.'}
-              </p>
-            </label>
+            {paymentForm.payment_method === 'gcash' && (
+              <label className="space-y-1.5 text-sm block">
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Reference Code</span>
+                <input
+                  type="text"
+                  required
+                  value={paymentForm.reference_code}
+                  onChange={(event) => setPaymentForm({ ...paymentForm, reference_code: event.target.value })}
+                  disabled={isBusy}
+                  placeholder="Example: 2045 667 982375"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 text-sm placeholder-slate-600 focus:outline-none focus:border-cyan-400"
+                />
+                <p className="text-xs text-slate-500 leading-5">
+                  Copy the reference number from your GCash receipt so the admin can verify it manually.
+                </p>
+              </label>
+            )}
 
             <button
               type="submit"
@@ -221,7 +290,7 @@ export default function MemberPaymentClient() {
           <span className="text-xs uppercase tracking-[0.24em] text-slate-500">Visible immediately after submit</span>
         </div>
         <div className="border border-slate-900 rounded-[28px] bg-slate-950/80 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900/60 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                 <tr>
@@ -260,6 +329,41 @@ export default function MemberPaymentClient() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="divide-y divide-slate-900 md:hidden">
+            {pendingPayments.length === 0 ? (
+              <div className="px-5 py-10 text-center text-slate-500 text-sm">
+                You do not have any pending payment submissions.
+              </div>
+            ) : (
+              pendingPayments.map((payment) => (
+                <article key={payment.payment_id} className="p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm font-semibold text-slate-100">{payment.payment_id}</p>
+                      <p className="text-xs text-slate-500">{payment.loan_id}</p>
+                    </div>
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRecordStatusClass(payment.record_status)}`}>
+                      {formatRecordStatus(payment.record_status)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Amount</p>
+                      <p className="mt-2 font-semibold text-cyan-200">${formatCurrency(payment.amount_received)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Method</p>
+                      <p className="mt-2 font-semibold uppercase text-slate-100">{payment.payment_method}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm text-slate-400">
+                    <p>Date: {payment.payment_date}</p>
+                    <p>Reference: {payment.reference_code || 'N/A'}</p>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>

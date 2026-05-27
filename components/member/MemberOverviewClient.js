@@ -15,12 +15,12 @@ export default function MemberOverviewClient() {
   return (
     <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <section className="grid xl:grid-cols-[1.35fr_0.95fr] gap-6 items-stretch">
-        <div className="p-8 rounded-[28px] border border-cyan-400/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_120px_-40px_rgba(14,165,233,0.45)] space-y-5">
+        <div className="p-6 sm:p-8 rounded-[28px] border border-cyan-400/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_120px_-40px_rgba(14,165,233,0.45)] space-y-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-cyan-200 text-xs font-semibold uppercase tracking-[0.24em]">
             Overview
           </div>
           <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-50">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-50">
               Stay on top of every balance and every pending approval.
             </h1>
             <p className="max-w-2xl text-slate-400 text-base md:text-lg leading-7">
@@ -29,7 +29,7 @@ export default function MemberOverviewClient() {
           </div>
         </div>
 
-        <div className="p-8 rounded-[28px] border border-slate-800 bg-slate-950/70 backdrop-blur-xl space-y-4">
+        <div className="p-6 sm:p-8 rounded-[28px] border border-slate-800 bg-slate-950/70 backdrop-blur-xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Pending Review Snapshot</p>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60">
@@ -47,7 +47,7 @@ export default function MemberOverviewClient() {
         </div>
       </section>
 
-      <section className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/50 backdrop-blur-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outstanding Balance</p>
           <p className="text-3xl font-bold text-emerald-300 mt-3">${formatCurrency(summary.total_balance)}</p>
@@ -77,7 +77,7 @@ export default function MemberOverviewClient() {
             <span className="text-xs uppercase tracking-[0.24em] text-slate-500">Live summary</span>
           </div>
           <div className="border border-slate-900 rounded-[28px] bg-slate-950/80 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/60 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                   <tr>
@@ -114,6 +114,38 @@ export default function MemberOverviewClient() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="divide-y divide-slate-900 md:hidden">
+              {loans.length === 0 ? (
+                <div className="px-6 py-10 text-center text-slate-500 text-sm">
+                  No loan accounts are linked to this member.
+                </div>
+              ) : (
+                loans.map((loan) => (
+                  <article key={loan.loan_id} className="p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-sm font-semibold text-slate-100">{loan.loan_id}</p>
+                        <p className="text-xs text-slate-500">Released on {loan.release_date}</p>
+                      </div>
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${getRepaymentStatusClass(loan.repayment_status)}`}>
+                        {formatRepaymentStatus(loan.repayment_status)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principal</p>
+                        <p className="mt-2 font-semibold text-slate-100">${formatCurrency(loan.principal_amount)}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Outstanding</p>
+                        <p className="mt-2 font-semibold text-emerald-300">${formatCurrency(loan.balance)}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-400">Term: {loan.term_months} months</p>
+                  </article>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -14,7 +14,7 @@ export default function MemberPaymentHistoryClient() {
 
   return (
     <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="p-6 rounded-3xl border border-slate-900 bg-slate-950/60">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Approved Amount</p>
           <p className="text-3xl font-bold text-emerald-300 mt-3">${formatCurrency(summary.approved_amount)}</p>
@@ -40,7 +40,7 @@ export default function MemberPaymentHistoryClient() {
           </div>
         </div>
         <div className="border border-slate-900 rounded-[28px] bg-slate-950/80 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900/60 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                 <tr>
@@ -87,6 +87,42 @@ export default function MemberPaymentHistoryClient() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="divide-y divide-slate-900 md:hidden">
+            {payments.length === 0 ? (
+              <div className="px-6 py-10 text-center text-slate-500 text-sm">
+                No payment activity has been recorded yet.
+              </div>
+            ) : (
+              payments.map((payment) => (
+                <article key={payment.payment_id} className="p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm font-semibold text-slate-100">{payment.payment_id}</p>
+                      <p className="text-xs text-slate-500">{payment.loan_id} • {payment.payment_date}</p>
+                    </div>
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRecordStatusClass(payment.record_status)}`}>
+                      {formatRecordStatus(payment.record_status)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Amount</p>
+                      <p className="mt-2 font-semibold text-slate-100">${formatCurrency(payment.amount_received)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Method</p>
+                      <p className="mt-2 font-semibold uppercase text-slate-100">{payment.payment_method}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm text-slate-400">
+                    <p>Reference: {payment.reference_code || 'N/A'}</p>
+                    <p>Collector: {payment.received_by || 'Awaiting review'}</p>
+                    <p>Repayment: {formatRepaymentStatus(payment.repayment_status)}</p>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>

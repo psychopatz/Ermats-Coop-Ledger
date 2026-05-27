@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import { groupPaymentsByPeriod, parseAmount } from '@/lib/domain/payments';
+import {
+  calculateApprovedLoanUpdate,
+  calculateVoidedLoanUpdate,
+  createOptimisticId,
+} from '@/lib/domain/workspaceState';
 
 function formatRecordStatus(status) {
   if (status === 'pending_approval') {
@@ -49,13 +54,13 @@ function createPaymentForm(today) {
     amount_received: '',
     payment_date: today,
     payment_method: 'cash',
+    reference_code: '',
   };
 }
 
 export default function AdminPaymentsClient() {
-  const { members, loans, payments, today } = useAdminWorkspace();
+  const { members, loans, payments, today, syncStatus, dispatch } = useAdminWorkspace();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [groupBy, setGroupBy] = useState('month');
@@ -68,7 +73,7 @@ export default function AdminPaymentsClient() {
 
   const memberLookup = new Map(members.map((member) => [member.member_id, member]));
   const loanLookup = new Map(loans.map((loan) => [loan.loan_id, loan]));
-  const isBusy = isSubmitting || isPending;
+  const isBusy = isSubmitting || syncStatus.state === 'saving';
 
   const visiblePayments = payments.filter((payment) => {
     if (paymentMethodFilter !== 'all' && payment.payment_method !== paymentMethodFilter) {
@@ -96,13 +101,15 @@ export default function AdminPaymentsClient() {
   const pendingCount = visiblePayments.filter((payment) => payment.record_status === 'pending_approval').length;
   const voidedCount = visiblePayments.filter((payment) => payment.record_status === 'voided').length;
 
-  const refreshWorkspace = () => {
-    startTransition(() => {
-      router.refresh();
-    });
+  const setPaymentMethod = (paymentMethod) => {
+    setPaymentForm((current) => ({
+      ...current,
+      payment_method: paymentMethod,
+      reference_code: paymentMethod === 'gcash' ? current.reference_code : '',
+    }));
   };
 
-  const submitRequest = async (url, options, fallbackMessage) => {
+  const sendRequest = async (url, options, fallbackMessage) => {
     setIsSubmitting(true);
     setError('');
 
@@ -111,20 +118,16 @@ export default function AdminPaymentsClient() {
       const data = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
-        router.push('/admin-login');
-        refreshWorkspace();
-        return null;
+        return { unauthorized: true };
       }
 
       if (!response.ok) {
-        throw new Error(data.error || fallbackMessage);
+        return { error: data.error || fallbackMessage };
       }
 
-      refreshWorkspace();
-      return data;
+      return { data };
     } catch (requestError) {
-      setError(requestError.message || fallbackMessage);
-      return null;
+      return { error: requestError.message || fallbackMessage };
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +142,48 @@ export default function AdminPaymentsClient() {
       return;
     }
 
-    const result = await submitRequest(
+    const amount = Number.parseFloat(paymentForm.amount_received);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Please enter a valid payment amount.');
+      return;
+    }
+
+    const normalizedReferenceCode = paymentForm.payment_method === 'gcash'
+      ? paymentForm.reference_code.trim()
+      : '';
+    if (paymentForm.payment_method === 'gcash' && !normalizedReferenceCode) {
+      setError('GCash payments require a reference code.');
+      return;
+    }
+
+    const optimisticId = createOptimisticId('payment');
+    const now = new Date().toISOString();
+    const optimisticLoan = {
+      ...calculateApprovedLoanUpdate(selectedLoan, amount),
+      updated_at: now,
+    };
+
+    dispatch({
+      type: 'payment_record_started',
+      payload: {
+        loan: optimisticLoan,
+        payment: {
+          payment_id: optimisticId,
+          loan_id: paymentForm.loan_id,
+          member_id: selectedLoan.member_id,
+          payment_date: paymentForm.payment_date,
+          amount_received: amount,
+          received_by: 'Pending admin sync',
+          status: 'approved',
+          created_at: now,
+          updated_at: now,
+          payment_method: paymentForm.payment_method,
+          reference_code: normalizedReferenceCode,
+        },
+      },
+    });
+
+    const result = await sendRequest(
       '/api/payments',
       {
         method: 'POST',
@@ -147,15 +191,49 @@ export default function AdminPaymentsClient() {
         body: JSON.stringify({
           loan_id: paymentForm.loan_id,
           member_id: selectedLoan.member_id,
-          amount_received: Number.parseFloat(paymentForm.amount_received),
+          amount_received: amount,
           payment_date: paymentForm.payment_date,
           payment_method: paymentForm.payment_method,
+          reference_code: normalizedReferenceCode,
         }),
       },
       'Failed to record payment.'
     );
 
-    if (result) {
+    if (result.unauthorized) {
+      dispatch({
+        type: 'payment_record_failed',
+        payload: {
+          tempId: optimisticId,
+          loan: selectedLoan,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'payment_record_failed',
+        payload: {
+          tempId: optimisticId,
+          loan: selectedLoan,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    if (result.data) {
+      dispatch({
+        type: 'payment_record_succeeded',
+        payload: {
+          tempId: optimisticId,
+          payment: result.data,
+        },
+      });
       setPaymentForm(createPaymentForm(today));
     }
   };
@@ -167,7 +245,34 @@ export default function AdminPaymentsClient() {
       return;
     }
 
-    const result = await submitRequest(
+    const targetPayment = payments.find((payment) => payment.payment_id === voidPaymentId);
+    if (!targetPayment) {
+      return;
+    }
+
+    const targetLoan = loanLookup.get(targetPayment.loan_id);
+    const optimisticPayment = {
+      ...targetPayment,
+      status: 'voided',
+      updated_at: new Date().toISOString(),
+    };
+    const revertedLoan = targetLoan && targetPayment.record_status === 'approved'
+      ? {
+        ...calculateVoidedLoanUpdate(targetLoan, targetPayment.amount_received),
+        updated_at: new Date().toISOString(),
+      }
+      : null;
+
+    dispatch({
+      type: 'payment_update_started',
+      payload: {
+        payment: optimisticPayment,
+        loan: revertedLoan,
+        message: 'Saving void update to Google Sheets...',
+      },
+    });
+
+    const result = await sendRequest(
       `/api/payments/${voidPaymentId}/void`,
       {
         method: 'PATCH',
@@ -177,25 +282,123 @@ export default function AdminPaymentsClient() {
       'Failed to void payment.'
     );
 
-    if (result) {
+    if (result.unauthorized) {
+      dispatch({
+        type: 'payment_update_failed',
+        payload: {
+          payment: targetPayment,
+          loan: targetLoan && targetPayment.record_status === 'approved' ? targetLoan : null,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'payment_update_failed',
+        payload: {
+          payment: targetPayment,
+          loan: targetLoan && targetPayment.record_status === 'approved' ? targetLoan : null,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    if (result.data) {
+      dispatch({
+        type: 'payment_update_succeeded',
+        payload: {
+          payment: result.data,
+          message: 'Payment safely updated in Google Sheets.',
+        },
+      });
       setVoidPaymentId(null);
       setVoidReason('');
     }
   };
 
   const handleApprovePayment = async (paymentId) => {
-    await submitRequest(
+    const targetPayment = payments.find((payment) => payment.payment_id === paymentId);
+    if (!targetPayment) {
+      return;
+    }
+
+    const targetLoan = loanLookup.get(targetPayment.loan_id);
+    if (!targetLoan) {
+      setError('The linked loan could not be found for this payment.');
+      return;
+    }
+
+    const optimisticPayment = {
+      ...targetPayment,
+      status: 'approved',
+      received_by: 'Pending admin sync',
+      updated_at: new Date().toISOString(),
+    };
+    const optimisticLoan = {
+      ...calculateApprovedLoanUpdate(targetLoan, targetPayment.amount_received),
+      updated_at: new Date().toISOString(),
+    };
+
+    dispatch({
+      type: 'payment_update_started',
+      payload: {
+        payment: optimisticPayment,
+        loan: optimisticLoan,
+        message: 'Saving approval to Google Sheets...',
+      },
+    });
+
+    const result = await sendRequest(
       `/api/payments/${paymentId}/approve`,
       {
         method: 'PATCH',
       },
       'Failed to approve payment.'
     );
+
+    if (result.unauthorized) {
+      dispatch({
+        type: 'payment_update_failed',
+        payload: {
+          payment: targetPayment,
+          loan: targetLoan,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'payment_update_failed',
+        payload: {
+          payment: targetPayment,
+          loan: targetLoan,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    dispatch({
+      type: 'payment_update_succeeded',
+      payload: {
+        payment: result.data,
+        message: 'Payment safely approved in Google Sheets.',
+      },
+    });
   };
 
   return (
     <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Visible Payments</p>
           <p className="text-3xl font-bold text-slate-100 mt-2">{visiblePayments.length}</p>
@@ -227,7 +430,19 @@ export default function AdminPaymentsClient() {
         </div>
       )}
 
-      <section className="grid xl:grid-cols-[1.6fr_1fr] gap-8">
+      {syncStatus.state !== 'idle' && !error && (
+        <div className={`p-4 rounded-xl text-sm border ${
+          syncStatus.state === 'saved'
+            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+            : syncStatus.state === 'error'
+              ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+              : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100'
+        }`}>
+          {syncStatus.message}
+        </div>
+      )}
+
+      <section className="grid gap-8 2xl:grid-cols-[minmax(0,1.65fr)_360px]">
         <div className="space-y-6">
           <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -235,16 +450,9 @@ export default function AdminPaymentsClient() {
                 <h2 className="text-2xl font-bold text-slate-100">Payments Analytics</h2>
                 <p className="text-sm text-slate-400">Group collections by year, month, or ISO week while keeping repayment and record status visible.</p>
               </div>
-              <button
-                onClick={refreshWorkspace}
-                disabled={isBusy}
-                className="py-2 px-4 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-slate-100 hover:bg-slate-900 transition-colors text-sm font-semibold disabled:opacity-50 cursor-pointer"
-              >
-                Refresh Workspace
-              </button>
             </div>
 
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <label className="space-y-1 text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Group By</span>
                 <select
@@ -303,7 +511,7 @@ export default function AdminPaymentsClient() {
               <h3 className="text-lg font-bold text-slate-100">Grouped Totals</h3>
               <span className="text-xs uppercase tracking-wider text-slate-500">{groupBy} buckets</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                   <tr>
@@ -341,13 +549,37 @@ export default function AdminPaymentsClient() {
                 </tbody>
               </table>
             </div>
+            <div className="divide-y divide-slate-900 md:hidden">
+              {groupedPayments.length === 0 ? (
+                <div className="px-5 py-10 text-center text-slate-500 text-sm">
+                  No payments match the current filters.
+                </div>
+              ) : (
+                groupedPayments.map((group) => (
+                  <article key={group.period} className="p-5 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-mono text-sm font-semibold text-slate-100">{group.period}</p>
+                      <p className="text-sm font-semibold text-emerald-400">${group.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Payments: {group.payment_count}</div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Approved: {group.approved_count}</div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Pending: {group.pending_count}</div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Voided: {group.voided_count}</div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Cash: {group.cash_count}</div>
+                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">GCash: {group.gcash_count}</div>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-900 bg-slate-900/40">
               <h3 className="text-lg font-bold text-slate-100">Payment Ledger</h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
                   <tr>
@@ -428,6 +660,69 @@ export default function AdminPaymentsClient() {
                 </tbody>
               </table>
             </div>
+            <div className="divide-y divide-slate-900 md:hidden">
+              {visiblePayments.length === 0 ? (
+                <div className="px-5 py-10 text-center text-slate-500 text-sm">
+                  No payments match the current filters.
+                </div>
+              ) : (
+                visiblePayments.map((payment) => {
+                  const borrower = memberLookup.get(payment.member_id);
+
+                  return (
+                    <article key={payment.payment_id} className="p-5 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-sm font-semibold text-slate-100">{payment.payment_id}</p>
+                          <p className="text-sm text-slate-300">{borrower?.full_name || payment.member_id}</p>
+                          <p className="text-xs text-slate-500">{payment.loan_id} • {payment.payment_date}</p>
+                        </div>
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRecordStatusClass(payment.record_status)}`}>
+                          {formatRecordStatus(payment.record_status)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Amount</p>
+                          <p className="mt-2 font-semibold text-emerald-300">${parseAmount(payment.amount_received).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Method</p>
+                          <p className="mt-2 font-semibold uppercase text-slate-100">{payment.payment_method}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1 text-sm text-slate-400">
+                        <p>Reference: {payment.reference_code || 'N/A'}</p>
+                        <p>Repayment: {formatRepaymentStatus(payment.repayment_status)}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {payment.record_status === 'pending_approval' && (
+                          <button
+                            onClick={() => handleApprovePayment(payment.payment_id)}
+                            disabled={isBusy}
+                            className="text-sm text-cyan-300 hover:text-cyan-200 font-semibold disabled:opacity-50 cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {payment.record_status !== 'voided' && (
+                          <button
+                            onClick={() => {
+                              setVoidPaymentId(payment.payment_id);
+                              setError('');
+                            }}
+                            disabled={isBusy}
+                            className="text-sm text-rose-500 hover:text-rose-400 font-semibold disabled:opacity-50 cursor-pointer"
+                          >
+                            Void
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
@@ -486,7 +781,7 @@ export default function AdminPaymentsClient() {
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Payment Method</label>
               <select
                 value={paymentForm.payment_method}
-                onChange={(event) => setPaymentForm({ ...paymentForm, payment_method: event.target.value })}
+                onChange={(event) => setPaymentMethod(event.target.value)}
                 disabled={isBusy}
                 className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
               >
@@ -494,6 +789,21 @@ export default function AdminPaymentsClient() {
                 <option value="gcash">GCash</option>
               </select>
             </div>
+            {paymentForm.payment_method === 'gcash' && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Reference Code</label>
+                <input
+                  type="text"
+                  required
+                  value={paymentForm.reference_code}
+                  onChange={(event) => setPaymentForm({ ...paymentForm, reference_code: event.target.value })}
+                  disabled={isBusy}
+                  placeholder="Example: 2045 667 982375"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+                />
+                <p className="text-xs text-slate-500">Required for GCash verification.</p>
+              </div>
+            )}
             <button
               type="submit"
               disabled={isBusy}

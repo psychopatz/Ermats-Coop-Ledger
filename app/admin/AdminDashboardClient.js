@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import MembersWorkspace from '@/components/admin/MembersWorkspace';
 import LoansWorkspace from '@/components/admin/LoansWorkspace';
 import AuditsWorkspace from '@/components/admin/AuditsWorkspace';
+import { createOptimisticId } from '@/lib/domain/workspaceState';
 
 function createLoanForm(today) {
   return {
@@ -25,23 +26,16 @@ const DEFAULT_MEMBER_FORM = {
 };
 
 export default function AdminDashboardClient() {
-  const { members, loans, audits, payments, today } = useAdminWorkspace();
+  const { members, loans, audits, payments, today, syncStatus, dispatch } = useAdminWorkspace();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('members');
   const [memberForm, setMemberForm] = useState(DEFAULT_MEMBER_FORM);
   const [loanForm, setLoanForm] = useState(createLoanForm(today));
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const isBusy = isSubmitting || isPending;
+  const isBusy = isSubmitting || syncStatus.state === 'saving';
 
-  const refreshWorkspace = () => {
-    startTransition(() => {
-      router.refresh();
-    });
-  };
-
-  const submitRequest = async (url, options, fallbackMessage) => {
+  const sendRequest = async (url, options, fallbackMessage) => {
     setIsSubmitting(true);
     setError('');
 
@@ -50,20 +44,16 @@ export default function AdminDashboardClient() {
       const data = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
-        router.push('/admin-login');
-        refreshWorkspace();
-        return null;
+        return { unauthorized: true };
       }
 
       if (!response.ok) {
-        throw new Error(data.error || fallbackMessage);
+        return { error: data.error || fallbackMessage };
       }
 
-      refreshWorkspace();
-      return data;
+      return { data };
     } catch (requestError) {
-      setError(requestError.message || fallbackMessage);
-      return null;
+      return { error: requestError.message || fallbackMessage };
     } finally {
       setIsSubmitting(false);
     }
@@ -72,7 +62,24 @@ export default function AdminDashboardClient() {
   const handleAddMember = async (event) => {
     event.preventDefault();
 
-    const result = await submitRequest(
+    const optimisticId = createOptimisticId('member');
+    const now = new Date().toISOString();
+
+    dispatch({
+      type: 'member_create_started',
+      payload: {
+        member: {
+          member_id: optimisticId,
+          full_name: memberForm.full_name,
+          email: memberForm.email,
+          status: 'active',
+          created_at: now,
+          updated_at: now,
+        },
+      },
+    });
+
+    const result = await sendRequest(
       '/api/members',
       {
         method: 'POST',
@@ -82,7 +89,38 @@ export default function AdminDashboardClient() {
       'Failed to register member.'
     );
 
-    if (result) {
+    if (result.unauthorized) {
+      dispatch({
+        type: 'member_create_failed',
+        payload: {
+          tempId: optimisticId,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'member_create_failed',
+        payload: {
+          tempId: optimisticId,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    if (result.data) {
+      dispatch({
+        type: 'member_create_succeeded',
+        payload: {
+          tempId: optimisticId,
+          member: result.data,
+        },
+      });
       setMemberForm(DEFAULT_MEMBER_FORM);
     }
   };
@@ -92,33 +130,139 @@ export default function AdminDashboardClient() {
       return;
     }
 
-    await submitRequest(
+    const existingMember = members.find((member) => member.member_id === memberId);
+    if (!existingMember) {
+      return;
+    }
+
+    const optimisticMember = {
+      ...existingMember,
+      status: 'inactive',
+      updated_at: new Date().toISOString(),
+    };
+
+    dispatch({
+      type: 'member_update_started',
+      payload: {
+        member: optimisticMember,
+      },
+    });
+
+    const result = await sendRequest(
       `/api/members/${memberId}`,
       { method: 'DELETE' },
       'Failed to deactivate member.'
     );
+
+    if (result.unauthorized) {
+      dispatch({
+        type: 'member_update_failed',
+        payload: {
+          member: existingMember,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'member_update_failed',
+        payload: {
+          member: existingMember,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    dispatch({
+      type: 'member_update_succeeded',
+      payload: {
+        member: result.data,
+      },
+    });
   };
 
   const handleAddLoan = async (event) => {
     event.preventDefault();
 
-    const result = await submitRequest(
+    const principalAmount = Number.parseFloat(loanForm.principal_amount);
+    const interestRate = Number.parseFloat(loanForm.interest_rate);
+    const termMonths = Number.parseInt(loanForm.term_months, 10);
+    const totalPayable = principalAmount + (principalAmount * interestRate * termMonths);
+    const optimisticId = createOptimisticId('loan');
+    const now = new Date().toISOString();
+
+    dispatch({
+      type: 'loan_create_started',
+      payload: {
+        loan: {
+          loan_id: optimisticId,
+          member_id: loanForm.member_id,
+          principal_amount: principalAmount,
+          interest_rate: interestRate,
+          term_months: termMonths,
+          total_payable: totalPayable,
+          balance: totalPayable,
+          status: 'active',
+          release_date: loanForm.release_date,
+          created_at: now,
+          updated_at: now,
+        },
+      },
+    });
+
+    const result = await sendRequest(
       '/api/loans',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           member_id: loanForm.member_id,
-          principal_amount: Number.parseFloat(loanForm.principal_amount),
-          interest_rate: Number.parseFloat(loanForm.interest_rate),
-          term_months: Number.parseInt(loanForm.term_months, 10),
+          principal_amount: principalAmount,
+          interest_rate: interestRate,
+          term_months: termMonths,
           release_date: loanForm.release_date,
         }),
       },
       'Failed to issue loan.'
     );
 
-    if (result) {
+    if (result.unauthorized) {
+      dispatch({
+        type: 'loan_create_failed',
+        payload: {
+          tempId: optimisticId,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'loan_create_failed',
+        payload: {
+          tempId: optimisticId,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    if (result.data) {
+      dispatch({
+        type: 'loan_create_succeeded',
+        payload: {
+          tempId: optimisticId,
+          loan: result.data,
+        },
+      });
       setLoanForm(createLoanForm(today));
     }
   };
@@ -187,18 +331,23 @@ export default function AdminDashboardClient() {
             </div>
           )}
 
+          {syncStatus.state !== 'idle' && !error && (
+            <div className={`p-4 rounded-xl text-sm border ${
+              syncStatus.state === 'saved'
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+                : syncStatus.state === 'error'
+                  ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                  : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100'
+            }`}>
+              {syncStatus.message}
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-100">Admin Operations</h2>
               <p className="text-sm text-slate-400">This page now renders from one server-side ledger snapshot instead of fanning out through multiple dashboard API reads.</p>
             </div>
-            <button
-              onClick={refreshWorkspace}
-              disabled={isBusy}
-              className="py-2 px-4 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-slate-100 hover:bg-slate-900 transition-colors text-sm font-semibold disabled:opacity-50 cursor-pointer"
-            >
-              Refresh Workspace
-            </button>
           </div>
 
           {activeTab === 'members' && (

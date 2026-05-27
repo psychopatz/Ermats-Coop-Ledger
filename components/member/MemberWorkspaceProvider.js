@@ -1,27 +1,74 @@
 'use client';
 
 import { createContext, useContext, useEffect, useReducer } from 'react';
+import { buildMemberWorkspaceData, IDLE_SYNC_STATUS } from '@/lib/domain/workspaceState';
 
 const MemberWorkspaceContext = createContext(null);
+
+function createMemberBaseState(initialData) {
+  return {
+    loans: initialData.loans || [],
+    payments: initialData.payments || [],
+    syncStatus: IDLE_SYNC_STATUS,
+  };
+}
 
 function memberWorkspaceReducer(state, action) {
   switch (action.type) {
     case 'hydrate':
-      return action.payload;
+      return createMemberBaseState(action.payload);
+    case 'payment_submit_started':
+      return {
+        ...state,
+        payments: [action.payload.payment, ...state.payments],
+        syncStatus: {
+          state: 'saving',
+          message: 'Saving payment to Google Sheets...',
+        },
+      };
+    case 'payment_submit_succeeded':
+      return {
+        ...state,
+        payments: state.payments.map((payment) => (
+          payment.payment_id === action.payload.tempId
+            ? action.payload.payment
+            : payment
+        )),
+        syncStatus: {
+          state: 'saved',
+          message: 'Payment safely saved to Google Sheets.',
+        },
+      };
+    case 'payment_submit_failed':
+      return {
+        ...state,
+        payments: state.payments.filter((payment) => payment.payment_id !== action.payload.tempId),
+        syncStatus: {
+          state: 'error',
+          message: action.payload.message,
+        },
+      };
+    case 'clear_sync_status':
+      return {
+        ...state,
+        syncStatus: IDLE_SYNC_STATUS,
+      };
     default:
       return state;
   }
 }
 
 export function MemberWorkspaceProvider({ initialData, today, children }) {
-  const [workspace, dispatch] = useReducer(memberWorkspaceReducer, initialData);
+  const [workspace, dispatch] = useReducer(memberWorkspaceReducer, initialData, createMemberBaseState);
 
   useEffect(() => {
     dispatch({ type: 'hydrate', payload: initialData });
   }, [initialData]);
 
+  const derivedWorkspace = buildMemberWorkspaceData(workspace);
+
   return (
-    <MemberWorkspaceContext.Provider value={{ ...workspace, today }}>
+    <MemberWorkspaceContext.Provider value={{ ...derivedWorkspace, today, dispatch }}>
       {children}
     </MemberWorkspaceContext.Provider>
   );
