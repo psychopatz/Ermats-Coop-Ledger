@@ -269,7 +269,7 @@ export default function MemberPaymentClient() {
                     <option value="">Select Loan...</option>
                     {availableLoans.map((loan) => (
                       <option key={loan.loan_id} value={loan.loan_id}>
-                        {loan.loan_id} (${formatCurrency(loan.balance)} remaining)
+                        {loan.loan_id} ({formatCurrency(loan.balance)} remaining)
                       </option>
                     ))}
                   </select>
@@ -379,7 +379,7 @@ export default function MemberPaymentClient() {
                 <>
                   <p className="text-2xl font-bold text-slate-100">{selectedLoan.loan_id}</p>
                   <p className="text-sm text-slate-400">Outstanding balance</p>
-                  <p className="text-4xl font-black text-emerald-300">${formatCurrency(selectedLoan.balance)}</p>
+                  <p className="text-4xl font-black text-emerald-300">{formatCurrency(selectedLoan.balance)}</p>
                 </>
               ) : (
                 <p className="text-sm text-slate-500">Choose a loan account to see the remaining balance.</p>

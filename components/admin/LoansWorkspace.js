@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatCurrency } from '@/lib/domain/currency';
 import {
   portalFieldClassName,
   portalFormCardClassName,
@@ -87,7 +88,7 @@ export default function LoansWorkspace({
                       <div className="grid grid-cols-2 gap-3 text-sm min-w-full lg:min-w-[320px] lg:max-w-[360px]">
                         <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Amount</p>
-                          <p className="mt-2 font-semibold text-emerald-300">${Number.parseFloat(loanRequest.requested_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          <p className="mt-2 font-semibold text-emerald-300">{formatCurrency(loanRequest.requested_amount)}</p>
                         </div>
                         <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Term</p>
@@ -199,11 +200,11 @@ export default function LoansWorkspace({
                             <p className="font-semibold">{borrower?.full_name || 'Unknown'}</p>
                             <p className="text-[10px] text-slate-500">{loan.member_id}</p>
                           </td>
-                          <td className="px-5 py-3.5 text-xs">${Number.parseFloat(loan.principal_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="px-5 py-3.5 text-xs">{formatCurrency(loan.principal_amount)}</td>
                           <td className="px-5 py-3.5 text-xs">{(Number.parseFloat(loan.interest_rate) * 100).toFixed(1)}%</td>
                           <td className="px-5 py-3.5 text-xs">{loan.term_months} mos</td>
-                          <td className="px-5 py-3.5 font-medium text-xs">${Number.parseFloat(loan.total_payable).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td className="px-5 py-3.5 font-medium text-emerald-400 text-xs">${Number.parseFloat(loan.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="px-5 py-3.5 font-medium text-xs">{formatCurrency(loan.total_payable)}</td>
+                          <td className="px-5 py-3.5 font-medium text-emerald-400 text-xs">{formatCurrency(loan.balance)}</td>
                           <td className="px-5 py-3.5 text-center text-xs">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getRepaymentStatusClass(loan.repayment_status)}`}>
                               {formatRepaymentStatus(loan.repayment_status)}
@@ -238,11 +239,11 @@ export default function LoansWorkspace({
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principal</p>
-                          <p className="mt-2 font-semibold text-slate-100">${Number.parseFloat(loan.principal_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          <p className="mt-2 font-semibold text-slate-100">{formatCurrency(loan.principal_amount)}</p>
                         </div>
                         <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Balance</p>
-                          <p className="mt-2 font-semibold text-emerald-400">${Number.parseFloat(loan.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          <p className="mt-2 font-semibold text-emerald-400">{formatCurrency(loan.balance)}</p>
                         </div>
                       </div>
                       <p className="text-sm text-slate-400">Rate: {(Number.parseFloat(loan.interest_rate) * 100).toFixed(1)}% • Term: {loan.term_months} months</p>
@@ -276,7 +277,7 @@ export default function LoansWorkspace({
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Principal Amount ($)</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Principal Amount (₱)</label>
             <input
               type="number"
               required

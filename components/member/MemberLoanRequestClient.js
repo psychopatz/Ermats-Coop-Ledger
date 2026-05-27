@@ -257,7 +257,7 @@ export default function MemberLoanRequestClient() {
 
             {activeLoan && (
               <div className="p-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-100 text-sm">
-                You still have an unpaid loan balance of ${formatCurrency(activeLoan.balance)} on {activeLoan.loan_id}. Clear that balance before requesting another loan.
+                You still have an unpaid loan balance of {formatCurrency(activeLoan.balance)} on {activeLoan.loan_id}. Clear that balance before requesting another loan.
               </div>
             )}
 
@@ -309,7 +309,7 @@ export default function MemberLoanRequestClient() {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Amount</p>
-                        <p className="mt-2 font-semibold text-cyan-200">${formatCurrency(request.requested_amount)}</p>
+                        <p className="mt-2 font-semibold text-cyan-200">{formatCurrency(request.requested_amount)}</p>
                       </div>
                       <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
                         <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Term</p>

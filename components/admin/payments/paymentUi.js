@@ -1,4 +1,4 @@
-import { parseAmount } from '@/lib/domain/payments';
+import { formatCurrency as formatPhpCurrency } from '@/lib/domain/currency';
 
 export function formatRecordStatus(status) {
   if (status === 'pending_approval') {
@@ -49,5 +49,5 @@ export function createPaymentForm(today) {
 }
 
 export function formatCurrency(amount) {
-  return `$${parseAmount(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  return formatPhpCurrency(amount);
 }

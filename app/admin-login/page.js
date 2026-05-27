@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
       </Link>
 
       <div className={`${portalAuthCardClassName} relative z-10 space-y-6`}>
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 portal-fade-up portal-fade-up-delay-1">
           <div className={`${portalBadgeClassName} border-amber-300/20 text-amber-200`}>
             Testing Mode Only
           </div>
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
         )}
 
         {hasMounted ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 portal-fade-up portal-fade-up-delay-2">
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Admin Email
@@ -135,7 +135,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
         ) : (
-          <div className="space-y-4" aria-hidden="true">
+          <div className="space-y-4 portal-fade-up portal-fade-up-delay-2" aria-hidden="true">
             <div className="space-y-1">
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Admin Email

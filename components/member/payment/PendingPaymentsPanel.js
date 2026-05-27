@@ -37,7 +37,7 @@ export default function PendingPaymentsPanel({ pendingPayments }) {
                     <td className="px-6 py-4 font-mono font-semibold text-slate-100">{payment.payment_id}</td>
                     <td className="px-6 py-4 font-mono text-slate-400">{payment.loan_id}</td>
                     <td className="px-6 py-4 text-slate-400">{payment.payment_date}</td>
-                    <td className="px-6 py-4 font-medium text-cyan-200">${formatCurrency(payment.amount_received)}</td>
+                    <td className="px-6 py-4 font-medium text-cyan-200">{formatCurrency(payment.amount_received)}</td>
                     <td className="px-6 py-4 uppercase">{payment.payment_method}</td>
                     <td className="px-6 py-4 font-mono text-xs text-slate-400">{payment.reference_code || 'N/A'}</td>
                     <td className="px-6 py-4 text-center">
@@ -71,7 +71,7 @@ export default function PendingPaymentsPanel({ pendingPayments }) {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Amount</p>
-                    <p className="mt-2 font-semibold text-cyan-200">${formatCurrency(payment.amount_received)}</p>
+                    <p className="mt-2 font-semibold text-cyan-200">{formatCurrency(payment.amount_received)}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Method</p>

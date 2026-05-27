@@ -1,4 +1,4 @@
-import { parseAmount } from '@/lib/domain/payments';
+export { formatCurrency } from '@/lib/domain/currency';
 
 export function formatRepaymentStatus(status) {
   if (status === 'not_paid') {
@@ -38,11 +38,4 @@ export function getRecordStatusClass(status) {
   }
 
   return 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
-}
-
-export function formatCurrency(value) {
-  return parseAmount(value).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }

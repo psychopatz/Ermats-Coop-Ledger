@@ -1,4 +1,5 @@
 import { parseAmount } from '@/lib/domain/payments';
+import { formatCurrency } from '@/components/admin/payments/paymentUi';
 import {
   portalFieldClassName,
   portalFormCardClassName,
@@ -33,14 +34,14 @@ export function AdminPaymentRecordForm({
             .filter((loan) => loan.repayment_status !== 'paid')
             .map((loan) => (
               <option key={loan.loan_id} value={loan.loan_id}>
-                {loan.loan_id} - {(memberLookup.get(loan.member_id)?.full_name || loan.member_id)} (${parseAmount(loan.balance).toLocaleString()} bal)
+                {loan.loan_id} - {(memberLookup.get(loan.member_id)?.full_name || loan.member_id)} ({formatCurrency(loan.balance)} bal)
               </option>
             ))}
         </select>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Amount Received ($)</label>
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Amount Received (₱)</label>
           <input
             type="number"
             required

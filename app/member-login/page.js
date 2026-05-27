@@ -68,7 +68,7 @@ export default function MemberLogin() {
       </Link>
 
       <div className={`${portalAuthCardClassName} relative z-10 space-y-6`}>
-        <div className="text-center">
+        <div className="text-center portal-fade-up portal-fade-up-delay-1">
           <p className={portalSectionEyebrowClassName}>Member Portal</p>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-stone-50">
             Member Sign In
@@ -93,7 +93,7 @@ export default function MemberLogin() {
         )}
 
         {hasMounted ? (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4 portal-fade-up portal-fade-up-delay-2">
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Email Address
@@ -173,7 +173,7 @@ export default function MemberLogin() {
           </div>
         )}
 
-        <div className="text-center pt-4 border-t border-white/8">
+        <div className="text-center pt-4 border-t border-white/8 portal-fade-up portal-fade-up-delay-3">
           <p className="text-xs text-slate-500">
             For development testing, check spreadsheet records or create new ones via Admin Dashboard.
           </p>

@@ -24,9 +24,9 @@ export const portalBadgeClassName = 'glass-chip inline-flex items-center gap-2 r
 
 export const portalAuthShellClassName = 'relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 sm:px-6';
 
-export const portalAuthCardClassName = 'glass-surface w-full max-w-md rounded-[32px] p-8 shadow-[0_24px_60px_-32px_rgba(4,12,24,0.72)]';
+export const portalAuthCardClassName = 'glass-surface portal-window-focus w-full max-w-md rounded-[32px] p-8 shadow-[0_24px_60px_-32px_rgba(4,12,24,0.72)]';
 
-export const portalTopLinkClassName = 'inline-flex items-center gap-2 text-sm text-slate-400 hover:text-stone-100 transition-colors';
+export const portalTopLinkClassName = 'portal-fade-up portal-fade-up-delay-1 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-stone-100 transition-colors';
 
 export function getPortalNavItemClassName(isActive) {
   return isActive
