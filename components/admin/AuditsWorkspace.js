@@ -1,8 +1,10 @@
+import { portalTableCardClassName } from '@/components/theme/portalTheme';
+
 export default function AuditsWorkspace({ audits }) {
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-bold text-slate-200">System Activity Audit Log</h3>
-      <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+      <div className={portalTableCardClassName}>
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-350">
             <thead className="bg-slate-900/50 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
@@ -29,9 +31,9 @@ export default function AuditsWorkspace({ audits }) {
                     <td className="px-5 py-3 text-slate-255 font-semibold">{audit.audit_id}</td>
                     <td className="px-5 py-3 text-slate-500 whitespace-nowrap">{audit.timestamp}</td>
                     <td className="px-5 py-3 text-slate-400">{audit.actor_email}</td>
-                    <td className="px-5 py-3 text-purple-400 font-bold">{audit.action}</td>
+                    <td className="px-5 py-3 text-emerald-200 font-bold">{audit.action}</td>
                     <td className="px-5 py-3 text-slate-400">{audit.entity_type}</td>
-                    <td className="px-5 py-3 text-indigo-400 font-semibold">{audit.entity_id}</td>
+                    <td className="px-5 py-3 text-[#d9e7cf] font-semibold">{audit.entity_id}</td>
                     <td className="px-5 py-3 text-slate-500 max-w-xs truncate" title={audit.details}>{audit.details}</td>
                   </tr>
                 ))
@@ -50,7 +52,7 @@ export default function AuditsWorkspace({ audits }) {
                     <p className="font-mono text-sm font-semibold text-slate-100">{audit.audit_id}</p>
                     <p className="text-xs text-slate-500">{audit.timestamp}</p>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">{audit.action}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">{audit.action}</span>
                 </div>
                 <p className="text-sm text-slate-300">{audit.actor_email}</p>
                 <p className="text-sm text-slate-400">{audit.entity_type} • {audit.entity_id}</p>

@@ -9,6 +9,15 @@ import {
   calculateVoidedLoanUpdate,
   createOptimisticId,
 } from '@/lib/domain/workspaceState';
+import {
+  getPortalSyncMessageClassName,
+  portalFieldClassName,
+  portalFormCardClassName,
+  portalMetricCardClassName,
+  portalPageClassName,
+  portalPrimaryButtonClassName,
+  portalTableCardClassName,
+} from '@/components/theme/portalTheme';
 
 function formatRecordStatus(status) {
   if (status === 'pending_approval') {
@@ -28,7 +37,7 @@ function formatRepaymentStatus(status) {
 
 function getRepaymentStatusClass(status) {
   if (status === 'paid') {
-    return 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400';
+    return 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
   }
 
   if (status === 'partial') {
@@ -397,24 +406,24 @@ export default function AdminPaymentsClient() {
   };
 
   return (
-    <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <main className={portalPageClassName}>
       <section className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Visible Payments</p>
           <p className="text-3xl font-bold text-slate-100 mt-2">{visiblePayments.length}</p>
           <p className="text-xs text-slate-500 mt-2">Filtered by your current controls</p>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Approved Amount</p>
           <p className="text-3xl font-bold text-emerald-400 mt-2">${collectedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           <p className="text-xs text-slate-500 mt-2">Already reflected in official balances</p>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Approval</p>
           <p className="text-3xl font-bold text-cyan-200 mt-2">{pendingCount}</p>
           <p className="text-xs text-slate-500 mt-2">${pendingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} waiting for review</p>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Voided Entries</p>
           <p className="text-3xl font-bold text-rose-400 mt-2">{voidedCount}</p>
           <p className="text-xs text-slate-500 mt-2">Transactions reversed from the ledger</p>
@@ -431,20 +440,14 @@ export default function AdminPaymentsClient() {
       )}
 
       {syncStatus.state !== 'idle' && !error && (
-        <div className={`p-4 rounded-xl text-sm border ${
-          syncStatus.state === 'saved'
-            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
-            : syncStatus.state === 'error'
-              ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-              : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100'
-        }`}>
+        <div className={`p-4 rounded-xl text-sm border ${getPortalSyncMessageClassName(syncStatus.state)}`}>
           {syncStatus.message}
         </div>
       )}
 
       <section className="grid gap-8 2xl:grid-cols-[minmax(0,1.65fr)_360px]">
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
+          <div className={portalFormCardClassName}>
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-slate-100">Payments Analytics</h2>
@@ -458,7 +461,7 @@ export default function AdminPaymentsClient() {
                 <select
                   value={groupBy}
                   onChange={(event) => setGroupBy(event.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 >
                   <option value="year">Year</option>
                   <option value="month">Month</option>
@@ -470,7 +473,7 @@ export default function AdminPaymentsClient() {
                 <select
                   value={paymentMethodFilter}
                   onChange={(event) => setPaymentMethodFilter(event.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 >
                   <option value="all">All Methods</option>
                   <option value="cash">Cash</option>
@@ -482,7 +485,7 @@ export default function AdminPaymentsClient() {
                 <select
                   value={repaymentStatusFilter}
                   onChange={(event) => setRepaymentStatusFilter(event.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 >
                   <option value="all">All Repayments</option>
                   <option value="paid">Paid</option>
@@ -495,7 +498,7 @@ export default function AdminPaymentsClient() {
                 <select
                   value={recordStatusFilter}
                   onChange={(event) => setRecordStatusFilter(event.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 >
                   <option value="all">All Records</option>
                   <option value="approved">Approved</option>
@@ -506,7 +509,7 @@ export default function AdminPaymentsClient() {
             </div>
           </div>
 
-          <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+          <div className={portalTableCardClassName}>
             <div className="px-6 py-4 border-b border-slate-900 bg-slate-900/40 flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-100">Grouped Totals</h3>
               <span className="text-xs uppercase tracking-wider text-slate-500">{groupBy} buckets</span>
@@ -562,12 +565,12 @@ export default function AdminPaymentsClient() {
                       <p className="text-sm font-semibold text-emerald-400">${group.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm text-slate-300">
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Payments: {group.payment_count}</div>
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Approved: {group.approved_count}</div>
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Pending: {group.pending_count}</div>
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Voided: {group.voided_count}</div>
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">Cash: {group.cash_count}</div>
-                      <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">GCash: {group.gcash_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">Payments: {group.payment_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">Approved: {group.approved_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">Pending: {group.pending_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">Voided: {group.voided_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">Cash: {group.cash_count}</div>
+                      <div className="rounded-2xl border border-white/8 bg-white/6 p-3">GCash: {group.gcash_count}</div>
                     </div>
                   </article>
                 ))
@@ -575,7 +578,7 @@ export default function AdminPaymentsClient() {
             </div>
           </div>
 
-          <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+          <div className={portalTableCardClassName}>
             <div className="px-6 py-4 border-b border-slate-900 bg-slate-900/40">
               <h3 className="text-lg font-bold text-slate-100">Payment Ledger</h3>
             </div>
@@ -682,11 +685,11 @@ export default function AdminPaymentsClient() {
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Amount</p>
                           <p className="mt-2 font-semibold text-emerald-300">${parseAmount(payment.amount_received).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Method</p>
                           <p className="mt-2 font-semibold uppercase text-slate-100">{payment.payment_method}</p>
                         </div>
@@ -727,7 +730,7 @@ export default function AdminPaymentsClient() {
         </div>
 
         <div className="space-y-6">
-          <form onSubmit={handleRecordPayment} className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
+          <form onSubmit={handleRecordPayment} className={portalFormCardClassName}>
             <div>
               <h3 className="text-xl font-bold text-slate-100">Record Payment</h3>
               <p className="text-sm text-slate-400 mt-1">Store the payment method and keep the repayment status derived from the linked loan balance.</p>
@@ -738,7 +741,7 @@ export default function AdminPaymentsClient() {
                 required
                 value={paymentForm.loan_id}
                 onChange={(event) => setPaymentForm({ ...paymentForm, loan_id: event.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                className={portalFieldClassName}
               >
                 <option value="">Select Loan...</option>
                 {loans
@@ -762,7 +765,7 @@ export default function AdminPaymentsClient() {
                   onChange={(event) => setPaymentForm({ ...paymentForm, amount_received: event.target.value })}
                   placeholder="1000"
                   disabled={isBusy}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 />
               </div>
               <div className="space-y-1">
@@ -773,7 +776,7 @@ export default function AdminPaymentsClient() {
                   value={paymentForm.payment_date}
                   onChange={(event) => setPaymentForm({ ...paymentForm, payment_date: event.target.value })}
                   disabled={isBusy}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 />
               </div>
             </div>
@@ -783,7 +786,7 @@ export default function AdminPaymentsClient() {
                 value={paymentForm.payment_method}
                 onChange={(event) => setPaymentMethod(event.target.value)}
                 disabled={isBusy}
-                className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                className={portalFieldClassName}
               >
                 <option value="cash">Cash</option>
                 <option value="gcash">GCash</option>
@@ -799,7 +802,7 @@ export default function AdminPaymentsClient() {
                   onChange={(event) => setPaymentForm({ ...paymentForm, reference_code: event.target.value })}
                   disabled={isBusy}
                   placeholder="Example: 2045 667 982375"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+                  className={portalFieldClassName}
                 />
                 <p className="text-xs text-slate-500">Required for GCash verification.</p>
               </div>
@@ -807,7 +810,7 @@ export default function AdminPaymentsClient() {
             <button
               type="submit"
               disabled={isBusy}
-              className="w-full py-2.5 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all disabled:opacity-50 text-sm cursor-pointer"
+              className={portalPrimaryButtonClassName}
             >
               {isBusy ? 'Processing...' : 'Record Payment'}
             </button>

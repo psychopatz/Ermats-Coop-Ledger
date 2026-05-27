@@ -18,7 +18,7 @@ export function formatRecordStatus(status) {
 
 export function getRepaymentStatusClass(status) {
   if (status === 'paid') {
-    return 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-300';
+    return 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
   }
 
   if (status === 'partial') {

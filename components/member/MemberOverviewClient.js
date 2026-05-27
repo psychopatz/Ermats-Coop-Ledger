@@ -239,7 +239,7 @@ export default function MemberOverviewClient() {
         </div>
         <div className={memberMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total Payable</p>
-          <p className="text-3xl font-bold text-indigo-200 mt-3">${formatCurrency(summary.total_payable)}</p>
+          <p className="text-3xl font-bold text-[#d9e7cf] mt-3">${formatCurrency(summary.total_payable)}</p>
           <p className="text-sm text-slate-500 mt-2">Across all configured loans</p>
         </div>
         <div className={memberMetricCardClassName}>

@@ -2,6 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import PortalAmbientBackdrop from '@/components/theme/PortalAmbientBackdrop';
+import {
+  getPortalNavItemClassName,
+  portalGhostButtonClassName,
+} from '@/components/theme/portalTheme';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview' },
@@ -22,15 +27,16 @@ export default function AdminShell({ session, children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-20">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col relative overflow-hidden isolate">
+      <PortalAmbientBackdrop fixed />
+      <header className="relative border-b border-white/10 bg-[linear-gradient(180deg,rgba(8,16,23,0.72),rgba(8,16,23,0.48))] backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-6 min-w-0">
             <div className="flex flex-wrap items-center gap-3 min-w-0">
-              <Link href="/" className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">
+              <Link href="/" className="text-xl sm:text-2xl font-black tracking-tight text-stone-50">
                 Obong ES Coop Ledger
               </Link>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-400 font-semibold uppercase tracking-wider">
+              <span className="glass-chip px-2.5 py-0.5 rounded-full text-[10px] text-stone-200 font-semibold uppercase tracking-[0.28em]">
                 Admin Workspace
               </span>
             </div>
@@ -43,11 +49,7 @@ export default function AdminShell({ session, children }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
-                      isActive
-                        ? 'border-purple-500/40 bg-purple-500/10 text-purple-300'
-                        : 'border-slate-800 bg-slate-900/50 text-slate-400 hover:text-slate-100 hover:border-slate-700'
-                    }`}
+                    className={getPortalNavItemClassName(isActive)}
                   >
                     {item.label}
                   </Link>
@@ -57,14 +59,14 @@ export default function AdminShell({ session, children }) {
           </div>
 
           <div className="flex items-center justify-between gap-3 xl:self-auto min-w-0">
-            <div className="text-left sm:text-right min-w-0">
+            <div className="text-left sm:text-right min-w-0 rounded-2xl border border-white/8 bg-white/6 px-4 py-2.5 backdrop-blur-md">
               <p className="text-sm font-medium text-slate-200">{session.email}</p>
               <p className="text-xs text-slate-500">Testing mode only</p>
             </div>
             <button
               onClick={handleLogout}
               disabled={isPending}
-              className="py-1.5 px-3 rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-colors text-xs font-semibold disabled:opacity-50 cursor-pointer"
+              className={`${portalGhostButtonClassName} py-2 px-4 text-xs disabled:opacity-50`}
             >
               Sign Out
             </button>
@@ -72,7 +74,7 @@ export default function AdminShell({ session, children }) {
         </div>
       </header>
 
-      {children}
+      <div className="relative z-10 flex-1">{children}</div>
     </div>
   );
 }

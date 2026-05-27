@@ -1,3 +1,10 @@
+import {
+  portalFieldClassName,
+  portalFormCardClassName,
+  portalPrimaryButtonClassName,
+  portalTableCardClassName,
+} from '@/components/theme/portalTheme';
+
 export default function MembersWorkspace({
   members,
   memberForm,
@@ -10,7 +17,7 @@ export default function MembersWorkspace({
     <div className="grid lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-4">
         <h3 className="text-xl font-bold text-slate-200">Registered Members</h3>
-        <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+        <div className={portalTableCardClassName}>
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-900/50 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
@@ -101,7 +108,7 @@ export default function MembersWorkspace({
 
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-200">Register Member</h3>
-        <form onSubmit={handleAddMember} className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
+        <form onSubmit={handleAddMember} className={portalFormCardClassName}>
           <div className="space-y-1">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Full Name</label>
             <input
@@ -111,7 +118,7 @@ export default function MembersWorkspace({
               onChange={(event) => setMemberForm({ ...memberForm, full_name: event.target.value })}
               placeholder="Juan Dela Cruz"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <div className="space-y-1">
@@ -123,7 +130,7 @@ export default function MembersWorkspace({
               onChange={(event) => setMemberForm({ ...memberForm, email: event.target.value })}
               placeholder="juan@example.com"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <div className="space-y-1">
@@ -135,13 +142,13 @@ export default function MembersWorkspace({
               onChange={(event) => setMemberForm({ ...memberForm, access_code: event.target.value })}
               placeholder="123456"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <button
             type="submit"
             disabled={actionLoading}
-            className="w-full py-2.5 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all disabled:opacity-50 text-sm cursor-pointer"
+            className={portalPrimaryButtonClassName}
           >
             {actionLoading ? 'Registering...' : 'Add Member'}
           </button>

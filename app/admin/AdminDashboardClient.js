@@ -9,6 +9,13 @@ import LoansWorkspace from '@/components/admin/LoansWorkspace';
 import AuditsWorkspace from '@/components/admin/AuditsWorkspace';
 import BulletinWorkspace from '@/components/admin/BulletinWorkspace';
 import { createOptimisticId } from '@/lib/domain/workspaceState';
+import {
+  getPortalSidebarTabClassName,
+  getPortalSyncMessageClassName,
+  portalInfoCardClassName,
+  portalMetricCardClassName,
+  portalPageClassName,
+} from '@/components/theme/portalTheme';
 
 function createLoanForm(today) {
   return {
@@ -507,25 +514,25 @@ export default function AdminDashboardClient() {
   ];
 
   return (
-    <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
+    <main className={`${portalPageClassName} flex flex-col gap-8`}>
       <section className="grid gap-4 md:grid-cols-4">
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Members</p>
           <p className="text-3xl font-bold text-slate-100 mt-2">{members.length}</p>
           <p className="text-xs text-slate-500 mt-2">Sanitized records available to the admin workspace</p>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Loans</p>
-          <p className="text-3xl font-bold text-indigo-300 mt-2">{loans.length}</p>
+          <p className="text-3xl font-bold text-[#d9e7cf] mt-2">{loans.length}</p>
           <p className="text-xs text-slate-500 mt-2">Repayment status is derived from current balances</p>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/40">
+        <div className={portalMetricCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Payments</p>
           <p className="text-3xl font-bold text-emerald-400 mt-2">{payments.length}</p>
           <p className="text-xs text-slate-500 mt-2">Grouped analytics and payment methods live in the payments hub</p>
         </div>
-        <Link href="/admin/payments" className="p-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 transition-colors">
-          <p className="text-xs font-semibold uppercase tracking-wider text-purple-300">Payments Hub</p>
+        <Link href="/admin/payments" className={`${portalInfoCardClassName} transition-colors hover:bg-white/10`}>
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">Payments Hub</p>
           <p className="text-2xl font-bold text-slate-100 mt-2">Year / Month / Week</p>
           <p className="text-xs text-slate-400 mt-2">Review grouped collections, payment methods, and repayment visibility on a dedicated page.</p>
         </Link>
@@ -540,14 +547,10 @@ export default function AdminDashboardClient() {
                 setActiveTab(tab.id);
                 setError('');
               }}
-              className={`w-full flex items-center justify-between p-3 rounded-xl border text-left text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-purple-650/10 border-purple-500/50 text-purple-400 shadow-[0_0_15px_-3px_rgba(168,85,247,0.1)]'
-                  : 'bg-slate-900/40 border-slate-900 text-slate-400 hover:border-slate-800 hover:text-slate-200'
-              }`}
+              className={getPortalSidebarTabClassName(activeTab === tab.id)}
             >
               <span>{tab.name}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-950 border border-slate-850 text-slate-500">
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-950/70 border border-white/8 text-slate-400">
                 {tab.count}
               </span>
             </button>
@@ -565,13 +568,7 @@ export default function AdminDashboardClient() {
           )}
 
           {syncStatus.state !== 'idle' && !error && (
-            <div className={`p-4 rounded-xl text-sm border ${
-              syncStatus.state === 'saved'
-                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
-                : syncStatus.state === 'error'
-                  ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-                  : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-100'
-            }`}>
+            <div className={`p-4 rounded-xl text-sm border ${getPortalSyncMessageClassName(syncStatus.state)}`}>
               {syncStatus.message}
             </div>
           )}

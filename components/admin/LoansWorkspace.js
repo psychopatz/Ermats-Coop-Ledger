@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import {
+  portalFieldClassName,
+  portalFormCardClassName,
+  portalPrimaryButtonClassName,
+  portalTableCardClassName,
+} from '@/components/theme/portalTheme';
 
 function formatRepaymentStatus(status) {
   if (status === 'not_paid') {
@@ -10,7 +16,7 @@ function formatRepaymentStatus(status) {
 
 function getRepaymentStatusClass(status) {
   if (status === 'paid') {
-    return 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400';
+    return 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
   }
 
   if (status === 'partial') {
@@ -61,7 +67,7 @@ export default function LoansWorkspace({
           <h3 className="text-xl font-bold text-slate-200">Pending Loan Requests</h3>
           <span className="text-xs uppercase tracking-wider text-slate-500">Manual admin approval only</span>
         </div>
-        <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+        <div className={portalTableCardClassName}>
           <div className="divide-y divide-slate-900">
             {pendingLoanRequests.length === 0 ? (
               <div className="px-5 py-10 text-center text-slate-500 text-sm">No loan requests are waiting for review.</div>
@@ -79,11 +85,11 @@ export default function LoansWorkspace({
                         <p className="text-xs text-slate-500">{loanRequest.member_id} • Requested on {loanRequest.created_at?.split('T')[0] || 'Unknown'}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm min-w-full lg:min-w-[320px] lg:max-w-[360px]">
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Amount</p>
                           <p className="mt-2 font-semibold text-emerald-300">${Number.parseFloat(loanRequest.requested_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Requested Term</p>
                           <p className="mt-2 font-semibold text-slate-100">{loanRequest.requested_term_months} months</p>
                         </div>
@@ -106,7 +112,7 @@ export default function LoansWorkspace({
                           value={requestForm.approved_interest_rate}
                           onChange={(event) => updateRequestForm(loanRequest.request_id, { approved_interest_rate: event.target.value })}
                           disabled={actionLoading}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                          className={portalFieldClassName}
                         />
                       </label>
                       <label className="space-y-1 text-sm">
@@ -116,7 +122,7 @@ export default function LoansWorkspace({
                           value={requestForm.release_date}
                           onChange={(event) => updateRequestForm(loanRequest.request_id, { release_date: event.target.value })}
                           disabled={actionLoading}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+                          className={portalFieldClassName}
                         />
                       </label>
                       <label className="space-y-1 text-sm md:col-span-3">
@@ -126,7 +132,7 @@ export default function LoansWorkspace({
                           onChange={(event) => updateRequestForm(loanRequest.request_id, { admin_notes: event.target.value })}
                           disabled={actionLoading}
                           rows={3}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm leading-6 resize-y focus:outline-none focus:border-purple-500"
+                          className={`${portalFieldClassName} resize-y leading-6`}
                         />
                       </label>
                     </div>
@@ -160,7 +166,7 @@ export default function LoansWorkspace({
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
           <h3 className="text-xl font-bold text-slate-200">Loan Portfolio</h3>
-          <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+          <div className={portalTableCardClassName}>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/50 text-slate-400 text-xs font-semibold uppercase border-b border-slate-900">
@@ -230,11 +236,11 @@ export default function LoansWorkspace({
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principal</p>
                           <p className="mt-2 font-semibold text-slate-100">${Number.parseFloat(loan.principal_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
-                        <div className="rounded-2xl border border-slate-900 bg-slate-900/40 p-3">
+                        <div className="rounded-2xl border border-white/8 bg-white/6 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Balance</p>
                           <p className="mt-2 font-semibold text-emerald-400">${Number.parseFloat(loan.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
@@ -250,14 +256,14 @@ export default function LoansWorkspace({
 
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-slate-200">Issue New Loan</h3>
-          <form onSubmit={handleAddLoan} className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
+          <form onSubmit={handleAddLoan} className={portalFormCardClassName}>
           <div className="space-y-1">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Borrowing Member</label>
             <select
               required
               value={loanForm.member_id}
               onChange={(event) => setLoanForm({ ...loanForm, member_id: event.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             >
               <option value="">Select Member...</option>
               {members
@@ -280,7 +286,7 @@ export default function LoansWorkspace({
               onChange={(event) => setLoanForm({ ...loanForm, principal_amount: event.target.value })}
               placeholder="10000"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <div className="space-y-1">
@@ -295,7 +301,7 @@ export default function LoansWorkspace({
               onChange={(event) => setLoanForm({ ...loanForm, interest_rate: event.target.value })}
               placeholder="0.03 (for 3%)"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <div className="space-y-1">
@@ -308,7 +314,7 @@ export default function LoansWorkspace({
               onChange={(event) => setLoanForm({ ...loanForm, term_months: event.target.value })}
               placeholder="12"
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-650 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
           <div className="space-y-1">
@@ -319,13 +325,13 @@ export default function LoansWorkspace({
               value={loanForm.release_date}
               onChange={(event) => setLoanForm({ ...loanForm, release_date: event.target.value })}
               disabled={actionLoading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:border-purple-500"
+              className={portalFieldClassName}
             />
           </div>
             <button
               type="submit"
               disabled={actionLoading}
-              className="w-full py-2.5 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all disabled:opacity-50 text-sm cursor-pointer"
+              className={portalPrimaryButtonClassName}
             >
               {actionLoading ? 'Issuing...' : 'Add Loan'}
             </button>

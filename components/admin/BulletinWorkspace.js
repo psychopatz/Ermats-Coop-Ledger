@@ -1,3 +1,10 @@
+import {
+  portalFieldClassName,
+  portalFormCardClassName,
+  portalPrimaryButtonClassName,
+  portalTableCardClassName,
+} from '@/components/theme/portalTheme';
+
 export default function BulletinWorkspace({
   bulletins,
   bulletinMessage,
@@ -11,7 +18,7 @@ export default function BulletinWorkspace({
     <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-8">
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-200">Member Bulletin</h3>
-        <form onSubmit={handleSaveBulletin} className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 space-y-4">
+        <form onSubmit={handleSaveBulletin} className={portalFormCardClassName}>
           <div>
             <p className="text-sm text-slate-400">
               This message appears at the top of the member overview. Leave it empty and save to clear the bulletin so members see the default friendly message.
@@ -25,13 +32,13 @@ export default function BulletinWorkspace({
               rows={8}
               disabled={actionLoading}
               placeholder="Add a short update, reminder, or collection note for members..."
-              className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 text-sm leading-6 resize-y focus:outline-none focus:border-purple-500"
+              className={`${portalFieldClassName} min-h-40 resize-y leading-6`}
             />
           </div>
           <button
             type="submit"
             disabled={actionLoading}
-            className="w-full py-2.5 px-4 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all disabled:opacity-50 text-sm cursor-pointer"
+            className={portalPrimaryButtonClassName}
           >
             {actionLoading ? 'Saving...' : bulletinMessage.trim() ? 'Publish Bulletin' : 'Clear Bulletin'}
           </button>
@@ -40,7 +47,7 @@ export default function BulletinWorkspace({
 
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-200">Bulletin History</h3>
-        <div className="border border-slate-900 rounded-2xl bg-slate-950 overflow-hidden">
+        <div className={portalTableCardClassName}>
           <div className="divide-y divide-slate-900">
             {!bulletins.length ? (
               <div className="px-5 py-10 text-center text-slate-500 text-sm">
@@ -69,7 +76,7 @@ export default function BulletinWorkspace({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border border-slate-900 bg-slate-900/30">
+        <div className="glass-surface p-5 rounded-[28px]">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Current Member View</p>
           <p className="mt-3 text-sm text-slate-300 whitespace-pre-wrap leading-6">
             {activeBulletin?.message?.trim() || 'Hello there. Your latest verified payments, balances, and loan updates will appear here once the admin posts a bulletin.'}

@@ -4,6 +4,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PortalAmbientBackdrop from '@/components/theme/PortalAmbientBackdrop';
+import {
+  portalAuthCardClassName,
+  portalAuthShellClassName,
+  portalFieldClassName,
+  portalPrimaryButtonClassName,
+  portalSectionEyebrowClassName,
+  portalTopLinkClassName,
+} from '@/components/theme/portalTheme';
 
 export default function MemberLogin() {
   const [hasMounted, setHasMounted] = useState(false);
@@ -45,11 +54,12 @@ export default function MemberLogin() {
   };
 
   return (
-    <main className="flex-grow flex flex-col justify-center items-center bg-slate-950 text-slate-100 p-6 relative">
-      {/* Back home navigation */}
+    <main className={portalAuthShellClassName}>
+      <PortalAmbientBackdrop />
+
       <Link
         href="/"
-        className="absolute top-6 left-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+        className={`absolute top-6 left-6 z-10 ${portalTopLinkClassName}`}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -57,9 +67,10 @@ export default function MemberLogin() {
         Back to Home
       </Link>
 
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6 backdrop-blur-md">
+      <div className={`${portalAuthCardClassName} relative z-10 space-y-6`}>
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 to-indigo-100">
+          <p className={portalSectionEyebrowClassName}>Member Portal</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-stone-50">
             Member Sign In
           </h2>
           <p className="text-slate-400 mt-2 text-sm">
@@ -94,7 +105,7 @@ export default function MemberLogin() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@domain.com"
                 disabled={isLoading}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm disabled:opacity-50"
+                className={portalFieldClassName}
               />
             </div>
 
@@ -109,14 +120,14 @@ export default function MemberLogin() {
                 onChange={(e) => setAccessCode(e.target.value)}
                 placeholder="••••••"
                 disabled={isLoading}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm disabled:opacity-50"
+                className={portalFieldClassName}
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              className={`${portalPrimaryButtonClassName} flex items-center justify-center gap-2 active:scale-[0.98]`}
             >
               {isLoading ? (
                 <>
@@ -148,21 +159,21 @@ export default function MemberLogin() {
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Email Address
               </div>
-              <div className="h-[50px] w-full rounded-xl border border-slate-800 bg-slate-950" />
+              <div className="h-[50px] w-full rounded-2xl border border-white/10 bg-slate-950/38" />
             </div>
 
             <div className="space-y-1">
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Access Code
               </div>
-              <div className="h-[50px] w-full rounded-xl border border-slate-800 bg-slate-950" />
+              <div className="h-[50px] w-full rounded-2xl border border-white/10 bg-slate-950/38" />
             </div>
 
-            <div className="h-12 w-full rounded-xl bg-indigo-600/60" />
+            <div className="h-12 w-full rounded-2xl bg-[#d9e7cf]/50" />
           </div>
         )}
 
-        <div className="text-center pt-4 border-t border-slate-800/60">
+        <div className="text-center pt-4 border-t border-white/8">
           <p className="text-xs text-slate-500">
             For development testing, check spreadsheet records or create new ones via Admin Dashboard.
           </p>
