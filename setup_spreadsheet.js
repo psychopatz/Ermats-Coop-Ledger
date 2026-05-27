@@ -32,6 +32,7 @@ function loadEnv() {
 
 const SCHEMA = {
   Members: ['member_id', 'full_name', 'email', 'access_code', 'status', 'created_at', 'updated_at'],
+  Admin_Bulletins: ['bulletin_id', 'message', 'status', 'created_at', 'updated_at'],
   Loans: [
     'loan_id',
     'member_id',
@@ -57,6 +58,21 @@ const SCHEMA = {
     'updated_at',
     'payment_method',
     'reference_code',
+  ],
+  Loan_Requests: [
+    'request_id',
+    'member_id',
+    'requested_amount',
+    'requested_term_months',
+    'preferred_release_date',
+    'purpose',
+    'status',
+    'reviewed_by',
+    'admin_notes',
+    'approved_interest_rate',
+    'approved_loan_id',
+    'created_at',
+    'updated_at',
   ],
   Audit_Log: ['audit_id', 'timestamp', 'actor_email', 'action', 'entity_type', 'entity_id', 'details'],
 };

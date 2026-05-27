@@ -8,7 +8,9 @@ const AdminWorkspaceContext = createContext(null);
 function createAdminBaseState(initialData) {
   return {
     members: initialData.members || [],
+    bulletins: initialData.bulletins || [],
     loans: initialData.loans || [],
+    loanRequests: initialData.loanRequests || [],
     payments: initialData.payments || [],
     audits: initialData.audits || [],
     syncStatus: IDLE_SYNC_STATUS,
@@ -115,6 +117,89 @@ function adminWorkspaceReducer(state, action) {
       return {
         ...state,
         loans: state.loans.filter((loan) => loan.loan_id !== action.payload.tempId),
+        syncStatus: {
+          state: 'error',
+          message: action.payload.message,
+        },
+      };
+    case 'bulletin_save_started':
+      return {
+        ...state,
+        bulletins: action.payload.bulletin
+          ? [action.payload.bulletin, ...state.bulletins.filter((bulletin) => bulletin.status !== 'active')]
+          : state.bulletins.filter((bulletin) => bulletin.status !== 'active'),
+        syncStatus: {
+          state: 'saving',
+          message: 'Saving bulletin to Google Sheets...',
+        },
+      };
+    case 'bulletin_save_succeeded':
+      return {
+        ...state,
+        bulletins: action.payload.bulletin
+          ? [action.payload.bulletin, ...state.bulletins.filter((bulletin) => bulletin.bulletin_id !== action.payload.tempId && bulletin.status !== 'active')]
+          : state.bulletins.filter((bulletin) => bulletin.status !== 'active' && bulletin.bulletin_id !== action.payload.tempId),
+        syncStatus: {
+          state: 'saved',
+          message: action.payload.message,
+        },
+      };
+    case 'bulletin_save_failed':
+      return {
+        ...state,
+        bulletins: action.payload.previousBulletins,
+        syncStatus: {
+          state: 'error',
+          message: action.payload.message,
+        },
+      };
+    case 'loan_request_update_started':
+      return {
+        ...state,
+        loanRequests: state.loanRequests.map((request) => (
+          request.request_id === action.payload.request.request_id
+            ? action.payload.request
+            : request
+        )),
+        loans: action.payload.loan
+          ? [action.payload.loan, ...state.loans]
+          : state.loans,
+        syncStatus: {
+          state: 'saving',
+          message: action.payload.message,
+        },
+      };
+    case 'loan_request_update_succeeded':
+      return {
+        ...state,
+        loanRequests: state.loanRequests.map((request) => (
+          request.request_id === action.payload.request.request_id
+            ? action.payload.request
+            : request
+        )),
+        loans: action.payload.loan
+          ? state.loans.map((loan) => (
+            loan.loan_id === action.payload.tempLoanId
+              ? action.payload.loan
+              : loan
+          ))
+          : state.loans,
+        syncStatus: {
+          state: 'saved',
+          message: action.payload.message,
+        },
+      };
+    case 'loan_request_update_failed':
+      return {
+        ...state,
+        loanRequests: state.loanRequests.map((request) => (
+          request.request_id === action.payload.previousRequest.request_id
+            ? action.payload.previousRequest
+            : request
+        )),
+        loans: action.payload.tempLoanId
+          ? state.loans.filter((loan) => loan.loan_id !== action.payload.tempLoanId)
+          : state.loans,
         syncStatus: {
           state: 'error',
           message: action.payload.message,

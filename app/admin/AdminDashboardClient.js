@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminWorkspace } from '@/components/admin/AdminWorkspaceProvider';
 import MembersWorkspace from '@/components/admin/MembersWorkspace';
 import LoansWorkspace from '@/components/admin/LoansWorkspace';
 import AuditsWorkspace from '@/components/admin/AuditsWorkspace';
+import BulletinWorkspace from '@/components/admin/BulletinWorkspace';
 import { createOptimisticId } from '@/lib/domain/workspaceState';
 
 function createLoanForm(today) {
@@ -26,14 +27,19 @@ const DEFAULT_MEMBER_FORM = {
 };
 
 export default function AdminDashboardClient() {
-  const { members, loans, audits, payments, today, syncStatus, dispatch } = useAdminWorkspace();
+  const { members, bulletins, activeBulletin, loans, loanRequests, audits, payments, today, syncStatus, dispatch } = useAdminWorkspace();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('members');
   const [memberForm, setMemberForm] = useState(DEFAULT_MEMBER_FORM);
   const [loanForm, setLoanForm] = useState(createLoanForm(today));
+  const [bulletinMessage, setBulletinMessage] = useState(activeBulletin?.message || '');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isBusy = isSubmitting || syncStatus.state === 'saving';
+
+  useEffect(() => {
+    setBulletinMessage(activeBulletin?.message || '');
+  }, [activeBulletin]);
 
   const sendRequest = async (url, options, fallbackMessage) => {
     setIsSubmitting(true);
@@ -267,9 +273,236 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const handleSaveBulletin = async (event) => {
+    event.preventDefault();
+
+    const optimisticId = createOptimisticId('bulletin');
+    const now = new Date().toISOString();
+    const nextMessage = bulletinMessage.trim();
+    const previousBulletins = bulletins;
+
+    dispatch({
+      type: 'bulletin_save_started',
+      payload: {
+        bulletin: nextMessage
+          ? {
+            bulletin_id: optimisticId,
+            message: nextMessage,
+            status: 'active',
+            created_at: now,
+            updated_at: now,
+          }
+          : null,
+      },
+    });
+
+    const result = await sendRequest(
+      '/api/bulletins',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: bulletinMessage }),
+      },
+      'Failed to save bulletin.'
+    );
+
+    if (result.unauthorized) {
+      dispatch({
+        type: 'bulletin_save_failed',
+        payload: {
+          previousBulletins,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'bulletin_save_failed',
+        payload: {
+          previousBulletins,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    dispatch({
+      type: 'bulletin_save_succeeded',
+      payload: {
+        tempId: optimisticId,
+        bulletin: result.data.bulletin,
+        message: result.data.bulletin
+          ? 'Bulletin safely saved to Google Sheets.'
+          : 'Bulletin cleared. Members will now see the default friendly message.',
+      },
+    });
+    setBulletinMessage(result.data.bulletin?.message || '');
+  };
+
+  const handleApproveLoanRequest = async (loanRequest, values) => {
+    const approvedInterestRate = Number.parseFloat(values.approved_interest_rate);
+    if (!Number.isFinite(approvedInterestRate) || approvedInterestRate < 0) {
+      setError('Please enter a valid approval interest rate.');
+      return;
+    }
+
+    const tempLoanId = createOptimisticId('approved-loan');
+    const now = new Date().toISOString();
+    const principalAmount = Number.parseFloat(loanRequest.requested_amount);
+    const termMonths = Number.parseInt(loanRequest.requested_term_months, 10);
+    const totalPayable = principalAmount + (principalAmount * approvedInterestRate * termMonths);
+    const optimisticLoan = {
+      loan_id: tempLoanId,
+      member_id: loanRequest.member_id,
+      principal_amount: principalAmount,
+      interest_rate: approvedInterestRate,
+      term_months: termMonths,
+      total_payable: totalPayable,
+      balance: totalPayable,
+      status: 'active',
+      release_date: values.release_date,
+      created_at: now,
+      updated_at: now,
+    };
+    const optimisticRequest = {
+      ...loanRequest,
+      status: 'approved',
+      reviewed_by: 'Pending admin sync',
+      admin_notes: values.admin_notes,
+      approved_interest_rate: approvedInterestRate,
+      approved_loan_id: tempLoanId,
+      updated_at: now,
+    };
+
+    dispatch({
+      type: 'loan_request_update_started',
+      payload: {
+        request: optimisticRequest,
+        loan: optimisticLoan,
+        message: 'Saving loan approval to Google Sheets...',
+      },
+    });
+
+    const result = await sendRequest(
+      `/api/loan-requests/${loanRequest.request_id}/approve`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      },
+      'Failed to approve loan request.'
+    );
+
+    if (result.unauthorized) {
+      dispatch({
+        type: 'loan_request_update_failed',
+        payload: {
+          previousRequest: loanRequest,
+          tempLoanId,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'loan_request_update_failed',
+        payload: {
+          previousRequest: loanRequest,
+          tempLoanId,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    dispatch({
+      type: 'loan_request_update_succeeded',
+      payload: {
+        request: result.data.request,
+        loan: result.data.loan,
+        tempLoanId,
+        message: 'Loan request safely approved in Google Sheets.',
+      },
+    });
+  };
+
+  const handleRejectLoanRequest = async (loanRequest, adminNotes) => {
+    const optimisticRequest = {
+      ...loanRequest,
+      status: 'rejected',
+      reviewed_by: 'Pending admin sync',
+      admin_notes: adminNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    dispatch({
+      type: 'loan_request_update_started',
+      payload: {
+        request: optimisticRequest,
+        loan: null,
+        message: 'Saving loan rejection to Google Sheets...',
+      },
+    });
+
+    const result = await sendRequest(
+      `/api/loan-requests/${loanRequest.request_id}/reject`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_notes: adminNotes }),
+      },
+      'Failed to reject loan request.'
+    );
+
+    if (result.unauthorized) {
+      dispatch({
+        type: 'loan_request_update_failed',
+        payload: {
+          previousRequest: loanRequest,
+          tempLoanId: null,
+          message: 'Your admin session expired. Please sign in again.',
+        },
+      });
+      router.push('/admin-login');
+      return;
+    }
+
+    if (result.error) {
+      dispatch({
+        type: 'loan_request_update_failed',
+        payload: {
+          previousRequest: loanRequest,
+          tempLoanId: null,
+          message: result.error,
+        },
+      });
+      setError(result.error);
+      return;
+    }
+
+    dispatch({
+      type: 'loan_request_update_succeeded',
+      payload: {
+        request: result.data.request,
+        loan: null,
+        tempLoanId: null,
+        message: 'Loan request safely updated in Google Sheets.',
+      },
+    });
+  };
+
   const tabs = [
     { id: 'members', name: 'Members Directory', count: members.length },
-    { id: 'loans', name: 'Loan Portfolio', count: loans.length },
+    { id: 'loans', name: 'Loans & Requests', count: loans.length + loanRequests.filter((request) => request.status === 'pending_approval').length },
+    { id: 'bulletins', name: 'Member Bulletin', count: bulletins.length },
     { id: 'audits', name: 'System Audit Logs', count: audits.length },
   ];
 
@@ -363,11 +596,25 @@ export default function AdminDashboardClient() {
 
           {activeTab === 'loans' && (
             <LoansWorkspace
+              today={today}
               members={members}
               loans={loans}
+              loanRequests={loanRequests}
               loanForm={loanForm}
               setLoanForm={setLoanForm}
               handleAddLoan={handleAddLoan}
+              handleApproveLoanRequest={handleApproveLoanRequest}
+              handleRejectLoanRequest={handleRejectLoanRequest}
+              actionLoading={isBusy}
+            />
+          )}
+
+          {activeTab === 'bulletins' && (
+            <BulletinWorkspace
+              bulletins={bulletins}
+              bulletinMessage={bulletinMessage}
+              setBulletinMessage={setBulletinMessage}
+              handleSaveBulletin={handleSaveBulletin}
               actionLoading={isBusy}
             />
           )}

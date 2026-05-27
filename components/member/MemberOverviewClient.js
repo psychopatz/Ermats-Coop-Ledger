@@ -9,42 +9,121 @@ import {
   getRepaymentStatusClass,
 } from '@/components/member/memberUi';
 
+function clampPercentage(value) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function getDefaultBulletinMessage() {
+  return 'Hello there. Your latest verified payments, loan balances, and admin updates will appear here. If you have a pending payment or loan request, the admin will review it before it changes your official ledger.';
+}
+
+function LoanProgressRing({ loan, pendingAmount }) {
+  const total = Number.parseFloat(loan.total_payable) || 0;
+  const remaining = Number.parseFloat(loan.balance) || 0;
+  const paid = Math.max(total - remaining, 0);
+  const normalizedPending = Math.min(pendingAmount, remaining);
+  const paidPercent = total > 0 ? clampPercentage((paid / total) * 100) : 0;
+  const pendingPercent = total > 0 ? clampPercentage((normalizedPending / total) * 100) : 0;
+  const remainingPercent = total > 0 ? clampPercentage((remaining / total) * 100) : 0;
+  const radius = 58;
+  const circumference = 2 * Math.PI * radius;
+
+  const getOffset = (percent) => circumference - ((percent / 100) * circumference);
+
+  return (
+    <div className="p-6 sm:p-8 rounded-[28px] border border-slate-800 bg-slate-950/70 backdrop-blur-xl space-y-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Loan Progress</p>
+        <p className="text-lg font-bold text-slate-100 mt-2">{loan.loan_id}</p>
+        <p className="text-sm text-slate-400 mt-1">Track verified payments, pending review, and the remaining balance in one place.</p>
+      </div>
+
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-40 h-40">
+          <svg viewBox="0 0 160 160" className="w-40 h-40 -rotate-90">
+            <defs>
+              <linearGradient id="paidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#14b8a6" />
+              </linearGradient>
+              <linearGradient id="pendingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#38bdf8" />
+              </linearGradient>
+              <linearGradient id="remainingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#a855f7" />
+              </linearGradient>
+            </defs>
+            <circle cx="80" cy="80" r={radius} stroke="rgba(15, 23, 42, 0.9)" strokeWidth="14" fill="none" />
+            <circle cx="80" cy="80" r={radius} stroke="url(#remainingGradient)" strokeWidth="14" strokeLinecap="round" fill="none" strokeDasharray={circumference} strokeDashoffset={getOffset(remainingPercent)} opacity="0.35" />
+            <circle cx="80" cy="80" r={radius - 18} stroke="rgba(15, 23, 42, 0.9)" strokeWidth="12" fill="none" />
+            <circle cx="80" cy="80" r={radius - 18} stroke="url(#pendingGradient)" strokeWidth="12" strokeLinecap="round" fill="none" strokeDasharray={2 * Math.PI * (radius - 18)} strokeDashoffset={(2 * Math.PI * (radius - 18)) - ((pendingPercent / 100) * (2 * Math.PI * (radius - 18)))} opacity="0.85" />
+            <circle cx="80" cy="80" r={radius - 36} stroke="rgba(15, 23, 42, 0.9)" strokeWidth="10" fill="none" />
+            <circle cx="80" cy="80" r={radius - 36} stroke="url(#paidGradient)" strokeWidth="10" strokeLinecap="round" fill="none" strokeDasharray={2 * Math.PI * (radius - 36)} strokeDashoffset={(2 * Math.PI * (radius - 36)) - ((paidPercent / 100) * (2 * Math.PI * (radius - 36)))} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Verified Paid</p>
+            <p className="text-3xl font-black text-slate-50 mt-1">{paidPercent.toFixed(0)}%</p>
+            <p className="text-xs text-slate-500 mt-1">of total payable</p>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-3 w-full">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/80">Verified Paid</p>
+            <p className="mt-1 text-xl font-bold text-emerald-200">${formatCurrency(paid)}</p>
+          </div>
+          <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-100/80">Pending Review</p>
+            <p className="mt-1 text-xl font-bold text-cyan-100">${formatCurrency(normalizedPending)}</p>
+          </div>
+          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-indigo-100/80">Remaining Balance</p>
+            <p className="mt-1 text-xl font-bold text-indigo-100">${formatCurrency(remaining)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MemberOverviewClient() {
-  const { loans, pendingPayments, summary } = useMemberWorkspace();
+  const { activeBulletin, loans, pendingPayments, pendingLoanRequests, summary } = useMemberWorkspace();
+  const activeLoan = loans.find((loan) => loan.repayment_status !== 'paid') || null;
+  const activeLoanPendingAmount = activeLoan
+    ? pendingPayments
+      .filter((payment) => payment.loan_id === activeLoan.loan_id)
+      .reduce((sum, payment) => sum + Number.parseFloat(payment.amount_received || 0), 0)
+    : 0;
+  const bulletinMessage = activeBulletin?.message?.trim() || getDefaultBulletinMessage();
 
   return (
     <main className="relative flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <section className="grid xl:grid-cols-[1.35fr_0.95fr] gap-6 items-stretch">
         <div className="p-6 sm:p-8 rounded-[28px] border border-cyan-400/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_120px_-40px_rgba(14,165,233,0.45)] space-y-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-cyan-200 text-xs font-semibold uppercase tracking-[0.24em]">
-            Overview
+            Admin Bulletin
           </div>
           <div className="space-y-3">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-50">
-              Stay on top of every balance and every pending approval.
-            </h1>
-            <p className="max-w-2xl text-slate-400 text-base md:text-lg leading-7">
-              Your portal now separates approved collections from pending submissions so GCash receipts can be checked by admin before they affect your outstanding balance.
-            </p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-50">Overview</h1>
+            <p className="max-w-2xl text-slate-400 text-base md:text-lg leading-7 whitespace-pre-wrap">{bulletinMessage}</p>
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 rounded-[28px] border border-slate-800 bg-slate-950/70 backdrop-blur-xl space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Pending Review Snapshot</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60">
-              <p className="text-xs uppercase tracking-wider text-slate-500">Submissions</p>
-              <p className="text-3xl font-bold text-cyan-200 mt-2">{summary.pending_count}</p>
-            </div>
-            <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60">
-              <p className="text-xs uppercase tracking-wider text-slate-500">Awaiting Amount</p>
-              <p className="text-3xl font-bold text-cyan-200 mt-2">${formatCurrency(summary.pending_amount)}</p>
-            </div>
+        {activeLoan ? (
+          <LoanProgressRing loan={activeLoan} pendingAmount={activeLoanPendingAmount} />
+        ) : (
+          <div className="p-6 sm:p-8 rounded-[28px] border border-slate-800 bg-slate-950/70 backdrop-blur-xl space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Loan Status</p>
+            <p className="text-2xl font-bold text-slate-100">No active loan in progress</p>
+            <p className="text-sm text-slate-400 leading-6">
+              {pendingLoanRequests.length
+                ? 'You already have a pending loan request waiting for admin review.'
+                : 'You can use the Loan Request tab to ask for a new loan when you are ready.'}
+            </p>
           </div>
-          <p className="text-sm text-slate-400 leading-6">
-            Pending payments are visible immediately in your portal, but they do not reduce the official balance until the admin verifies the remittance.
-          </p>
-        </div>
+        )}
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -153,7 +232,7 @@ export default function MemberOverviewClient() {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold text-slate-100">Pending Approval</h2>
-            <span className="text-xs uppercase tracking-[0.24em] text-cyan-300">GCash reviewed manually</span>
+            <span className="text-xs uppercase tracking-[0.24em] text-cyan-300">Payment must be reviewed by admin manually</span>
           </div>
           <div className="rounded-[28px] border border-cyan-400/10 bg-slate-950/70 overflow-hidden">
             <div className="p-5 border-b border-slate-900/80 bg-slate-900/50">

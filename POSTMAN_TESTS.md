@@ -127,9 +127,75 @@ These endpoints are **admin-only**.
 ```
 *Note: If you attempt to update `principal_amount`, `interest_rate`, or `term_months` after active payments have been registered, this request will return a 400 Bad Request.*
 
+### SUBMIT a member loan request
+- **Method:** `POST`
+- **URL:** `{{base_url}}/api/member/loan-requests`
+- **Access:** Member session required
+- **Request Body (JSON):**
+```json
+{
+  "requested_amount": 15000,
+  "requested_term_months": 12,
+  "preferred_release_date": "2026-06-15",
+  "purpose": "Small business capital"
+}
+```
+
+*Notes:*
+- Members cannot request a new loan while an existing loan still has an unpaid balance.
+- Members also cannot create another request while one is already pending approval.
+- Loan requests stay at `pending_approval` until an admin manually reviews them.
+
+### APPROVE a pending loan request
+- **Method:** `PATCH`
+- **URL:** `{{base_url}}/api/loan-requests/LRQ-000001/approve`
+- **Access:** Admin session required
+- **Request Body (JSON):**
+```json
+{
+  "approved_interest_rate": 0.03,
+  "release_date": "2026-06-15",
+  "admin_notes": "Approved after document review"
+}
+```
+
+*Notes:*
+- Approval creates a real row in `Loans` and marks the request as `approved`.
+- A member with an unpaid loan cannot be approved for another loan request.
+
+### REJECT a pending loan request
+- **Method:** `PATCH`
+- **URL:** `{{base_url}}/api/loan-requests/LRQ-000001/reject`
+- **Access:** Admin session required
+- **Request Body (JSON):**
+```json
+{
+  "admin_notes": "Please settle the previous balance first."
+}
+```
+
 ---
 
-## 4. Payments Endpoints
+## 4. Bulletin Endpoints
+
+### SAVE or clear the active member bulletin
+- **Method:** `POST`
+- **URL:** `{{base_url}}/api/bulletins`
+- **Access:** Admin session required
+- **Request Body (JSON):**
+```json
+{
+  "message": "Please upload your GCash reference code correctly for faster approval."
+}
+```
+
+*Notes:*
+- Sending a non-empty `message` archives the previous active bulletin and publishes the new one.
+- Sending an empty string clears the active bulletin so members see the default overview message.
+
+---
+
+## 5. Payments Endpoints
 
 - `GET /api/payments` requires a signed session cookie.
 - With an admin session, it returns all payments or filtered results.
@@ -161,7 +227,7 @@ These endpoints are **admin-only**.
 - Admin-recorded payments are stored as approved immediately and update the linked loan balance right away.
 - `received_by` is now recorded from the authenticated admin session rather than trusted from the request body.
 - `payment_method` must be either `cash` or `gcash`.
-- `reference_code` is optional and useful for GCash receipts.
+- `reference_code` is required for `gcash` and omitted for `cash`.
 
 ### SUBMIT a member payment for approval
 - **Method:** `POST`
@@ -181,7 +247,7 @@ These endpoints are **admin-only**.
 *Notes:*
 - Member-submitted payments are stored with `status: pending_approval`.
 - Pending submissions do not update loan balances until an admin approves them.
-- `reference_code` is optional for `cash` and recommended for `gcash`.
+- `reference_code` is required for `gcash` and hidden for `cash`.
 
 ### APPROVE a pending member payment
 - **Method:** `PATCH`
@@ -207,7 +273,7 @@ These endpoints are **admin-only**.
 - Voiding an approved payment reverts the linked loan balance.
 - Voiding a pending payment cancels the submission without changing the loan balance.
 
-## 5. Audit Endpoints
+## 6. Audit Endpoints
 
 ### GET audit log entries
 - **Method:** `GET`

@@ -7,8 +7,10 @@ const MemberWorkspaceContext = createContext(null);
 
 function createMemberBaseState(initialData) {
   return {
+    bulletins: initialData.bulletins || [],
     loans: initialData.loans || [],
     payments: initialData.payments || [],
+    loanRequests: initialData.loanRequests || [],
     syncStatus: IDLE_SYNC_STATUS,
   };
 }
@@ -43,6 +45,37 @@ function memberWorkspaceReducer(state, action) {
       return {
         ...state,
         payments: state.payments.filter((payment) => payment.payment_id !== action.payload.tempId),
+        syncStatus: {
+          state: 'error',
+          message: action.payload.message,
+        },
+      };
+    case 'loan_request_submit_started':
+      return {
+        ...state,
+        loanRequests: [action.payload.request, ...state.loanRequests],
+        syncStatus: {
+          state: 'saving',
+          message: 'Saving loan request to Google Sheets...',
+        },
+      };
+    case 'loan_request_submit_succeeded':
+      return {
+        ...state,
+        loanRequests: state.loanRequests.map((request) => (
+          request.request_id === action.payload.tempId
+            ? action.payload.request
+            : request
+        )),
+        syncStatus: {
+          state: 'saved',
+          message: 'Loan request safely saved to Google Sheets.',
+        },
+      };
+    case 'loan_request_submit_failed':
+      return {
+        ...state,
+        loanRequests: state.loanRequests.filter((request) => request.request_id !== action.payload.tempId),
         syncStatus: {
           state: 'error',
           message: action.payload.message,
