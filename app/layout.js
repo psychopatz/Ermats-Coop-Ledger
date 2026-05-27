@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Obong Coop Ledger | Cooperative Loan Ledger MVP",
+  title: "Obong Coop Ledger | Cooperative Loan Ledger",
   description: "A secure, cooperative loan ledger system powered by Next.js and Google Sheets.",
 };
 

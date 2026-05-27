@@ -12,7 +12,7 @@ export default function Home() {
         {/* Testing Mode Banner */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/5 text-amber-400 text-xs font-semibold uppercase tracking-wider backdrop-blur-md">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-          Testing MVP Mode
+          Testing Mode
         </div>
 
         {/* Title */}

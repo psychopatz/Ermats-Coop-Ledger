@@ -120,7 +120,7 @@ Refer to [POSTMAN_TESTS.md](./POSTMAN_TESTS.md) for full instructions, headers, 
 
 ## 4. Safety & Security Disclaimers
 
-This is an MVP/testing environment and must be updated before production:
+This is a testing environment and must be updated before production:
 1. **Access Codes:** Currently stored in plain text. Production must implement password hashing (e.g. bcrypt or argon2) and use secure HTTP-only cookies (e.g. iron-session or NextAuth.js).
 2. **Admin Access:** This version adds env-configured admin login and signed HTTP-only cookies, but it is still an MVP. Replace the static env password approach with a real identity system before hosting.
 3. **Data Security:** Do not store highly sensitive personal records, passwords, bank cards, or bank credentials in Google Sheets. Google Sheets is not a compliant storage layer for highly confidential transaction data.

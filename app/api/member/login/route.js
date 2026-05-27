@@ -36,7 +36,7 @@ export async function POST(request) {
       );
     }
 
-    // SAFETY NOTE: This login mechanism is for testing/MVP purposes only.
+    // SAFETY NOTE: This login mechanism is for testing purposes only.
     // 1. Production must store access_code as a secure hash (e.g. bcrypt or argon2).
     // 2. Production must establish secure, signed HTTP-only sessions (e.g., using next-auth, iron-session, or JWT in HTTP-only cookies)
     //    instead of storing credentials and raw IDs in localStorage on the client side.

@@ -1,6 +1,6 @@
 # Postman REST API Testing Reference - Coop Ledger
 
-This reference documents the API endpoints for the Cooperative Loan Ledger MVP, providing complete JSON payloads and HTTP paths to copy directly into Postman.
+This reference documents the API endpoints for the Cooperative Loan Ledger, providing complete JSON payloads and HTTP paths to copy directly into Postman.
 
 ## Global Configurations
 - **Base URL:** `http://localhost:3000` (or whichever port Next.js is running on)
