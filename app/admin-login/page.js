@@ -1,14 +1,13 @@
-// app/member-login/page.js
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function MemberLogin() {
+export default function AdminLoginPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const [email, setEmail] = useState('');
-  const [accessCode, setAccessCode] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -17,28 +16,27 @@ export default function MemberLogin() {
     setHasMounted(true);
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/member/login', {
+      const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, access_code: accessCode }),
+        body: JSON.stringify({ email, password }),
       });
-
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed.');
+        throw new Error(data.error || 'Admin login failed.');
       }
 
-      router.push('/member-dashboard');
+      router.push('/admin');
       router.refresh();
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred.');
+      setError(err.message || 'Admin login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -46,7 +44,6 @@ export default function MemberLogin() {
 
   return (
     <main className="flex-grow flex flex-col justify-center items-center bg-slate-950 text-slate-100 p-6 relative">
-      {/* Back home navigation */}
       <Link
         href="/"
         className="absolute top-6 left-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
@@ -58,12 +55,15 @@ export default function MemberLogin() {
       </Link>
 
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6 backdrop-blur-md">
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 to-indigo-100">
-            Member Sign In
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/5 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+            Testing Mode Only
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-indigo-200">
+            Admin Sign In
           </h2>
-          <p className="text-slate-400 mt-2 text-sm">
-            Enter your email and access code to review your loan records.
+          <p className="text-slate-400 text-sm">
+            Use the env-configured admin credentials to access the testing dashboard.
           </p>
         </div>
 
@@ -82,91 +82,64 @@ export default function MemberLogin() {
         )}
 
         {hasMounted ? (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Email Address
+                Admin Email
               </label>
               <input
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@domain.com"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@example.com"
                 disabled={isLoading}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm disabled:opacity-50"
+                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm disabled:opacity-50"
               />
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Access Code
+                Password
               </label>
               <input
                 type="password"
                 required
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="••••••"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
                 disabled={isLoading}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm disabled:opacity-50"
+                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold transition-all shadow-lg shadow-purple-600/20 active:scale-[0.98] disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Logging in...
-                </>
-              ) : (
-                'Access Portal'
-              )}
+              {isLoading ? 'Signing in...' : 'Access Admin Dashboard'}
             </button>
           </form>
         ) : (
           <div className="space-y-4" aria-hidden="true">
             <div className="space-y-1">
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Email Address
+                Admin Email
               </div>
               <div className="h-[50px] w-full rounded-xl border border-slate-800 bg-slate-950" />
             </div>
 
             <div className="space-y-1">
               <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Access Code
+                Password
               </div>
               <div className="h-[50px] w-full rounded-xl border border-slate-800 bg-slate-950" />
             </div>
 
-            <div className="h-12 w-full rounded-xl bg-indigo-600/60" />
+            <div className="h-12 w-full rounded-xl bg-purple-600/60" />
           </div>
         )}
-
-        <div className="text-center pt-4 border-t border-slate-800/60">
-          <p className="text-xs text-slate-500">
-            For development testing, check spreadsheet records or create new ones via Admin Dashboard.
-          </p>
-        </div>
       </div>
     </main>
   );

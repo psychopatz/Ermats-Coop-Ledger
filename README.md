@@ -1,6 +1,6 @@
-# Coop Ledger - Cooperative Loan Ledger MVP
+# Coop Ledger - Cooperative Loan Ledger
 
-A testing and MVP web application for a cooperative loan ledger system. This application uses Google Sheets as its server-side database through server-side Next.js API routes. 
+A testing web application for a cooperative loan ledger system. This application uses Google Sheets as its server-side database through server-side Next.js API routes. 
 
 ## Features
 - **Zero-DB Hosting:** No Supabase, Firebase, or SQL database required—runs entirely on Google Sheets.
@@ -74,10 +74,16 @@ GOOGLE_SHEET_ID=your_google_spreadsheet_id_here
 GOOGLE_CLIENT_EMAIL=your_service_account_client_email_here
 # Note: Copy-paste the entire private key including "-----BEGIN PRIVATE KEY-----" and "-----END PRIVATE KEY-----"
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC..."
+APP_SESSION_SECRET=replace_with_a_long_random_secret
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=replace_with_a_strong_admin_password
 ```
 
 > [!CAUTION]
 > Do NOT prefix these environment variables with `NEXT_PUBLIC_`. Doing so exposes these credentials to the client browser, compromising your service account.
+
+> [!IMPORTANT]
+> `APP_SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are required for the secured admin and member session flows. The app now uses signed HTTP-only cookies instead of trusting `localStorage` for authenticated access.
 
 ---
 
@@ -92,10 +98,11 @@ The server will start (usually on [http://localhost:3000](http://localhost:3000)
 ### Access UI Routes in the Browser
 - **Landing page:** [http://localhost:3000/](http://localhost:3000/)
 - **Member portal sign-in:** [http://localhost:3000/member-login](http://localhost:3000/member-login)
-- **Admin control panel:** [http://localhost:3000/admin](http://localhost:3000/admin)
+- **Admin sign-in:** [http://localhost:3000/admin-login](http://localhost:3000/admin-login)
+- **Admin control panel:** [http://localhost:3000/admin](http://localhost:3000/admin) (requires admin login first)
 
 ### API & Postman Testing
-Refer to [POSTMAN_TESTS.md](file:///home/psychopatz/Desktop/Projects/Coop%20Ledger/POSTMAN_TESTS.md) for full instructions, headers, and request body JSON payloads.
+Refer to [POSTMAN_TESTS.md](file:///home/psychopatz/Desktop/Projects/Coop%20Ledger/POSTMAN_TESTS.md) for full instructions, headers, request body JSON payloads, and the required login steps for admin/member session cookies.
 
 ---
 
@@ -103,5 +110,6 @@ Refer to [POSTMAN_TESTS.md](file:///home/psychopatz/Desktop/Projects/Coop%20Ledg
 
 This is an MVP/testing environment and must be updated before production:
 1. **Access Codes:** Currently stored in plain text. Production must implement password hashing (e.g. bcrypt or argon2) and use secure HTTP-only cookies (e.g. iron-session or NextAuth.js).
-2. **Admin Access:** The `/admin` portal has no access restrictions in this MVP. Add secure admin authentication before hosting.
+2. **Admin Access:** This version adds env-configured admin login and signed HTTP-only cookies, but it is still an MVP. Replace the static env password approach with a real identity system before hosting.
 3. **Data Security:** Do not store highly sensitive personal records, passwords, bank cards, or bank credentials in Google Sheets. Google Sheets is not a compliant storage layer for highly confidential transaction data.
+4. **Credential Hygiene:** Rotate any Google service account key immediately if it has ever been shared in chat, screenshots, or commit history.

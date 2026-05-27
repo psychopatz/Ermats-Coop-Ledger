@@ -1,9 +1,15 @@
 // app/api/audits/route.js
 import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects } from '@/lib/googleSheets';
+import { getAdminSession } from '@/lib/session';
 
 export async function GET() {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const rawRows = await getRows('Audit_Log');
     const logs = rowsToObjects(rawRows);
 

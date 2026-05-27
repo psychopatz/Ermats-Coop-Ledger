@@ -53,7 +53,7 @@ export default function Home() {
 
           {/* Admin Card */}
           <Link
-            href="/admin"
+            href="/admin-login"
             className="group relative block p-8 rounded-2xl border border-slate-800 bg-slate-950/60 hover:bg-slate-900/60 transition-all duration-300 hover:border-purple-500/50 hover:shadow-[0_0_30px_-5px_rgba(168,85,247,0.15)] backdrop-blur-md overflow-hidden text-left"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors pointer-events-none"></div>

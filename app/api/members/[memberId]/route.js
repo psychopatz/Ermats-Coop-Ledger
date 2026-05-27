@@ -2,10 +2,26 @@
 import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession, getSession } from '@/lib/session';
+
+function sanitizeMember(member) {
+  const { _rowNumber, access_code, ...rest } = member;
+  return rest;
+}
 
 export async function GET(request, { params }) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
     const { memberId } = await params;
+
+    if (session.role !== 'admin' && session.member_id !== memberId) {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
     const rawRows = await getRows('Members');
     const members = rowsToObjects(rawRows);
 
@@ -17,8 +33,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { _rowNumber, ...sanitizedMember } = member;
-    return NextResponse.json(sanitizedMember);
+    return NextResponse.json(sanitizeMember(member));
   } catch (error) {
     console.error('GET /api/members/[memberId] error:', error);
     return NextResponse.json(
@@ -30,6 +45,11 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const { memberId } = await params;
     const body = await request.json();
 
@@ -64,15 +84,14 @@ export async function PATCH(request, { params }) {
 
     // Write audit log
     await writeAuditLog({
-      actorEmail: 'admin@test.com', // Admin actor in MVP
+      actorEmail: adminSession.email,
       action: 'UPDATE_MEMBER',
       entityType: 'Members',
       entityId: memberId,
       details: { updatedFields: Object.keys(body).filter((k) => k !== '_rowNumber') },
     });
 
-    const { _rowNumber, ...sanitizedMember } = updatedMember;
-    return NextResponse.json(sanitizedMember);
+    return NextResponse.json(sanitizeMember(updatedMember));
   } catch (error) {
     console.error('PATCH /api/members/[memberId] error:', error);
     return NextResponse.json(
@@ -84,6 +103,11 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const { memberId } = await params;
     const rawRows = await getRows('Members');
     const members = rowsToObjects(rawRows);
@@ -107,15 +131,14 @@ export async function DELETE(request, { params }) {
 
     // Write audit log
     await writeAuditLog({
-      actorEmail: 'admin@test.com',
+      actorEmail: adminSession.email,
       action: 'SOFT_DELETE_MEMBER',
       entityType: 'Members',
       entityId: memberId,
       details: { status: 'inactive' },
     });
 
-    const { _rowNumber, ...sanitizedMember } = updatedMember;
-    return NextResponse.json(sanitizedMember);
+    return NextResponse.json(sanitizeMember(updatedMember));
   } catch (error) {
     console.error('DELETE /api/members/[memberId] error:', error);
     return NextResponse.json(

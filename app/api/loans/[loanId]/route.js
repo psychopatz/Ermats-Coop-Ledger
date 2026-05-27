@@ -2,9 +2,15 @@
 import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request, { params }) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
     const { loanId } = await params;
     const rawRows = await getRows('Loans');
     const loans = rowsToObjects(rawRows);
@@ -15,6 +21,10 @@ export async function GET(request, { params }) {
         { error: `Loan with ID "${loanId}" not found.` },
         { status: 404 }
       );
+    }
+
+    if (session.role === 'member' && loan.member_id !== session.member_id) {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
     const { _rowNumber, ...sanitizedLoan } = loan;
@@ -30,6 +40,11 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const { loanId } = await params;
     const body = await request.json();
 
@@ -123,7 +138,7 @@ export async function PATCH(request, { params }) {
 
     // Write audit log
     await writeAuditLog({
-      actorEmail: 'admin@test.com',
+      actorEmail: adminSession.email,
       action: 'UPDATE_LOAN',
       entityType: 'Loans',
       entityId: loanId,

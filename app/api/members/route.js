@@ -3,14 +3,23 @@ import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, appendRow } from '@/lib/googleSheets';
 import { generateMemberId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession } from '@/lib/session';
+
+function sanitizeMember(member) {
+  const { _rowNumber, access_code, ...rest } = member;
+  return rest;
+}
 
 export async function GET() {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const rawRows = await getRows('Members');
     const members = rowsToObjects(rawRows);
-
-    // Sanitize response by removing internal _rowNumber
-    const responseData = members.map(({ _rowNumber, ...rest }) => rest);
+    const responseData = members.map(sanitizeMember);
 
     return NextResponse.json(responseData);
   } catch (error) {
@@ -24,6 +33,11 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { full_name, email, access_code } = body;
 
@@ -69,14 +83,14 @@ export async function POST(request) {
 
     // Write audit log
     await writeAuditLog({
-      actorEmail: 'admin@test.com', // Admin or system actor for registration
+      actorEmail: adminSession.email,
       action: 'CREATE_MEMBER',
       entityType: 'Members',
       entityId: member_id,
       details: { full_name, email, status: 'active' },
     });
 
-    const { _rowNumber, ...sanitizedMember } = newMember;
+    const sanitizedMember = sanitizeMember(newMember);
     return NextResponse.json(sanitizedMember, { status: 201 });
   } catch (error) {
     console.error('POST /api/members error:', error);

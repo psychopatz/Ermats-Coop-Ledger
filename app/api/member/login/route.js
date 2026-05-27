@@ -1,6 +1,7 @@
 // app/api/member/login/route.js
 import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects } from '@/lib/googleSheets';
+import { setSessionCookie } from '@/lib/session';
 
 export async function POST(request) {
   try {
@@ -37,11 +38,20 @@ export async function POST(request) {
     // 1. Production must store access_code as a secure hash (e.g. bcrypt or argon2).
     // 2. Production must establish secure, signed HTTP-only sessions (e.g., using next-auth, iron-session, or JWT in HTTP-only cookies)
     //    instead of storing credentials and raw IDs in localStorage on the client side.
-    return NextResponse.json({
+    const response = NextResponse.json({
       member_id: member.member_id,
       full_name: member.full_name,
       email: member.email,
     });
+
+    setSessionCookie(response, {
+      role: 'member',
+      member_id: member.member_id,
+      full_name: member.full_name,
+      email: member.email,
+    }, request);
+
+    return response;
   } catch (error) {
     console.error('POST /api/member/login error:', error);
     return NextResponse.json(

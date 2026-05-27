@@ -2,17 +2,23 @@
 import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession } from '@/lib/session';
 
 export async function PATCH(request, { params }) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const { paymentId } = await params;
     const body = await request.json();
-    const { void_reason, actor_email } = body;
+    const { void_reason } = body;
 
     // Validate inputs
-    if (!void_reason || !actor_email) {
+    if (!void_reason) {
       return NextResponse.json(
-        { error: 'Required fields missing. Provide: void_reason, actor_email.' },
+        { error: 'Required fields missing. Provide: void_reason.' },
         { status: 400 }
       );
     }
@@ -81,7 +87,7 @@ export async function PATCH(request, { params }) {
 
     // 6. Write audit logs
     await writeAuditLog({
-      actorEmail: actor_email,
+      actorEmail: adminSession.email,
       action: 'VOID_PAYMENT',
       entityType: 'Payments',
       entityId: paymentId,
@@ -93,7 +99,7 @@ export async function PATCH(request, { params }) {
     });
 
     await writeAuditLog({
-      actorEmail: actor_email,
+      actorEmail: adminSession.email,
       action: 'REVERT_LOAN_BALANCE_VOID',
       entityType: 'Loans',
       entityId: existingPayment.loan_id,

@@ -3,12 +3,24 @@ import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, appendRow, updateRow } from '@/lib/googleSheets';
 import { generatePaymentId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('member_id');
+    const requestedMemberId = searchParams.get('member_id');
     const loanId = searchParams.get('loan_id');
+
+    if (session.role === 'member' && requestedMemberId && requestedMemberId !== session.member_id) {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
+    const memberId = session.role === 'member' ? session.member_id : requestedMemberId;
 
     const rawRows = await getRows('Payments');
     const payments = rowsToObjects(rawRows);
@@ -36,21 +48,24 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { loan_id, member_id, amount_received, payment_date, received_by } = body;
+    const { loan_id, member_id, amount_received, payment_date } = body;
 
     // Validate presence of required inputs
     if (
       !loan_id ||
       !member_id ||
       amount_received === undefined ||
-      !payment_date ||
-      !received_by
+      !payment_date
     ) {
       return NextResponse.json(
         {
-          error:
-            'Required fields missing. Provide: loan_id, member_id, amount_received, payment_date, received_by.',
+          error: 'Required fields missing. Provide: loan_id, member_id, amount_received, payment_date.',
         },
         { status: 400 }
       );
@@ -110,7 +125,7 @@ export async function POST(request) {
       member_id,
       payment_date,
       amount_received: amount,
-      received_by,
+      received_by: adminSession.email,
       status: 'active',
       created_at: now,
       updated_at: now,
@@ -139,7 +154,7 @@ export async function POST(request) {
 
     // Audit logging for transaction
     await writeAuditLog({
-      actorEmail: received_by,
+      actorEmail: adminSession.email,
       action: 'RECORD_PAYMENT',
       entityType: 'Payments',
       entityId: payment_id,
@@ -148,7 +163,7 @@ export async function POST(request) {
 
     // Audit logging for loan state change
     await writeAuditLog({
-      actorEmail: received_by,
+      actorEmail: adminSession.email,
       action: 'UPDATE_LOAN_BALANCE',
       entityType: 'Loans',
       entityId: loan_id,

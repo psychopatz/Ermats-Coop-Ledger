@@ -3,11 +3,23 @@ import { NextResponse } from 'next/server';
 import { getRows, rowsToObjects, appendRow } from '@/lib/googleSheets';
 import { generateLoanId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const memberId = searchParams.get('member_id');
+    const requestedMemberId = searchParams.get('member_id');
+
+    if (session.role === 'member' && requestedMemberId && requestedMemberId !== session.member_id) {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
+    const memberId = session.role === 'member' ? session.member_id : requestedMemberId;
 
     const rawRows = await getRows('Loans');
     const loans = rowsToObjects(rawRows);
@@ -32,6 +44,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const adminSession = await getAdminSession();
+    if (!adminSession) {
+      return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { member_id, principal_amount, interest_rate, term_months, release_date } = body;
 
@@ -112,7 +129,7 @@ export async function POST(request) {
 
     // Write audit log
     await writeAuditLog({
-      actorEmail: 'admin@test.com',
+      actorEmail: adminSession.email,
       action: 'CREATE_LOAN',
       entityType: 'Loans',
       entityId: loan_id,
