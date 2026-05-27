@@ -1,13 +1,10 @@
 // app/api/members/[memberId]/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
+import { updateRow } from '@/lib/googleSheets';
 import { writeAuditLog } from '@/lib/auditLog';
+import { sanitizeMember } from '@/lib/domain/members';
 import { getAdminSession, getSession } from '@/lib/session';
-
-function sanitizeMember(member) {
-  const { _rowNumber, access_code, ...rest } = member;
-  return rest;
-}
+import { listMembers } from '@/lib/repositories/ledgerRepository';
 
 export async function GET(request, { params }) {
   try {
@@ -22,8 +19,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
 
     const member = members.find((m) => m.member_id === memberId);
     if (!member) {
@@ -61,8 +57,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
 
     const existingMember = members.find((m) => m.member_id === memberId);
     if (!existingMember) {
@@ -109,8 +104,7 @@ export async function DELETE(request, { params }) {
     }
 
     const { memberId } = await params;
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
 
     const existingMember = members.find((m) => m.member_id === memberId);
     if (!existingMember) {

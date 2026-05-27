@@ -1,8 +1,10 @@
 // app/api/loans/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, appendRow } from '@/lib/googleSheets';
+import { appendRow } from '@/lib/googleSheets';
+import { enrichLoans } from '@/lib/domain/payments';
 import { generateLoanId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { listLoans, listMembers, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request) {
@@ -21,12 +23,12 @@ export async function GET(request) {
 
     const memberId = session.role === 'member' ? session.member_id : requestedMemberId;
 
-    const rawRows = await getRows('Loans');
-    const loans = rowsToObjects(rawRows);
+    const [loans, payments] = await Promise.all([listLoans(), listPayments()]);
+    const enrichedLoans = enrichLoans(loans, payments);
 
-    let filteredLoans = loans;
+    let filteredLoans = enrichedLoans;
     if (memberId) {
-      filteredLoans = loans.filter((l) => l.member_id === memberId);
+      filteredLoans = enrichedLoans.filter((loan) => loan.member_id === memberId);
     }
 
     // Sanitize response by removing internal _rowNumber
@@ -84,8 +86,7 @@ export async function POST(request) {
     }
 
     // Verify member exists and is active
-    const rawMembers = await getRows('Members');
-    const members = rowsToObjects(rawMembers);
+    const [members, loans] = await Promise.all([listMembers(), listLoans()]);
     const member = members.find((m) => m.member_id === member_id);
 
     if (!member) {
@@ -101,8 +102,6 @@ export async function POST(request) {
       );
     }
 
-    const rawLoans = await getRows('Loans');
-    const loans = rowsToObjects(rawLoans);
     const loan_id = generateLoanId(loans);
 
     // Calculate flat interest: total_interest = principal * rate * term

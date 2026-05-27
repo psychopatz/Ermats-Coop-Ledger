@@ -1,7 +1,9 @@
 // app/api/loans/[loanId]/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
+import { updateRow } from '@/lib/googleSheets';
+import { enrichLoans } from '@/lib/domain/payments';
 import { writeAuditLog } from '@/lib/auditLog';
+import { listLoans, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request, { params }) {
@@ -12,10 +14,10 @@ export async function GET(request, { params }) {
     }
 
     const { loanId } = await params;
-    const rawRows = await getRows('Loans');
-    const loans = rowsToObjects(rawRows);
+    const [loans, payments] = await Promise.all([listLoans(), listPayments()]);
+    const enrichedLoans = enrichLoans(loans, payments);
 
-    const loan = loans.find((l) => l.loan_id === loanId);
+    const loan = enrichedLoans.find((l) => l.loan_id === loanId);
     if (!loan) {
       return NextResponse.json(
         { error: `Loan with ID "${loanId}" not found.` },
@@ -56,8 +58,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const rawRows = await getRows('Loans');
-    const loans = rowsToObjects(rawRows);
+    const loans = await listLoans();
 
     const existingLoan = loans.find((l) => l.loan_id === loanId);
     if (!existingLoan) {
@@ -89,8 +90,7 @@ export async function PATCH(request, { params }) {
 
     if (isRecalculationNeeded) {
       // Verify if any active (non-voided) payments exist for this loan
-      const rawPayments = await getRows('Payments');
-      const payments = rowsToObjects(rawPayments);
+      const payments = await listPayments();
       const activePayments = payments.filter(
         (p) => p.loan_id === loanId && p.status !== 'voided'
       );

@@ -152,11 +152,14 @@ These endpoints are **admin-only**.
   "loan_id": "LOAN-000001",
   "member_id": "MBR-000001",
   "amount_received": 1000,
-  "payment_date": "2026-05-27"
+  "payment_date": "2026-05-27",
+  "payment_method": "cash"
 }
 ```
 
-*Note:* `received_by` is now recorded from the authenticated admin session rather than trusted from the request body.
+*Notes:*
+- `received_by` is now recorded from the authenticated admin session rather than trusted from the request body.
+- `payment_method` must be either `cash` or `gcash`.
 
 ### VOID an active payment
 - **Method:** `PATCH`

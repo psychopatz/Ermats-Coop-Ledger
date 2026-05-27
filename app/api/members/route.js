@@ -1,14 +1,11 @@
 // app/api/members/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, appendRow } from '@/lib/googleSheets';
+import { appendRow } from '@/lib/googleSheets';
 import { generateMemberId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { sanitizeMember } from '@/lib/domain/members';
 import { getAdminSession } from '@/lib/session';
-
-function sanitizeMember(member) {
-  const { _rowNumber, access_code, ...rest } = member;
-  return rest;
-}
+import { listMembers } from '@/lib/repositories/ledgerRepository';
 
 export async function GET() {
   try {
@@ -17,8 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
     }
 
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
     const responseData = members.map(sanitizeMember);
 
     return NextResponse.json(responseData);
@@ -49,8 +45,7 @@ export async function POST(request) {
       );
     }
 
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
 
     // Check for duplicate email (case-insensitive)
     const isDuplicate = members.some(

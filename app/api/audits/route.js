@@ -1,7 +1,7 @@
 // app/api/audits/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects } from '@/lib/googleSheets';
 import { getAdminSession } from '@/lib/session';
+import { listAuditLogs } from '@/lib/repositories/ledgerRepository';
 
 export async function GET() {
   try {
@@ -10,8 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin authentication required.' }, { status: 401 });
     }
 
-    const rawRows = await getRows('Audit_Log');
-    const logs = rowsToObjects(rawRows);
+    const logs = await listAuditLogs();
 
     // Sort audit logs by timestamp descending so latest activities appear first
     const sortedLogs = logs.sort((a, b) => {

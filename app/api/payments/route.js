@@ -1,8 +1,10 @@
 // app/api/payments/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, appendRow, updateRow } from '@/lib/googleSheets';
+import { appendRow, updateRow } from '@/lib/googleSheets';
+import { enrichLoans, enrichPayments, PAYMENT_METHODS } from '@/lib/domain/payments';
 import { generatePaymentId } from '@/lib/ids';
 import { writeAuditLog } from '@/lib/auditLog';
+import { listLoans, listMembers, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession, getSession } from '@/lib/session';
 
 export async function GET(request) {
@@ -22,15 +24,16 @@ export async function GET(request) {
 
     const memberId = session.role === 'member' ? session.member_id : requestedMemberId;
 
-    const rawRows = await getRows('Payments');
-    const payments = rowsToObjects(rawRows);
+    const [loans, payments] = await Promise.all([listLoans(), listPayments()]);
+    const enrichedLoans = enrichLoans(loans, payments);
+    const enrichedPayments = enrichPayments(payments, enrichedLoans);
 
-    let filtered = payments;
+    let filtered = enrichedPayments;
     if (memberId) {
-      filtered = filtered.filter((p) => p.member_id === memberId);
+      filtered = filtered.filter((payment) => payment.member_id === memberId);
     }
     if (loanId) {
-      filtered = filtered.filter((p) => p.loan_id === loanId);
+      filtered = filtered.filter((payment) => payment.loan_id === loanId);
     }
 
     // Sanitize response by removing internal _rowNumber
@@ -54,18 +57,19 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { loan_id, member_id, amount_received, payment_date } = body;
+    const { loan_id, member_id, amount_received, payment_date, payment_method } = body;
 
     // Validate presence of required inputs
     if (
       !loan_id ||
       !member_id ||
       amount_received === undefined ||
-      !payment_date
+      !payment_date ||
+      !payment_method
     ) {
       return NextResponse.json(
         {
-          error: 'Required fields missing. Provide: loan_id, member_id, amount_received, payment_date.',
+          error: 'Required fields missing. Provide: loan_id, member_id, amount_received, payment_date, payment_method.',
         },
         { status: 400 }
       );
@@ -79,9 +83,15 @@ export async function POST(request) {
       );
     }
 
-    // Verify member exists
-    const rawMembers = await getRows('Members');
-    const members = rowsToObjects(rawMembers);
+    const normalizedMethod = String(payment_method).trim().toLowerCase();
+    if (!PAYMENT_METHODS.includes(normalizedMethod)) {
+      return NextResponse.json(
+        { error: `payment_method must be one of: ${PAYMENT_METHODS.join(', ')}.` },
+        { status: 400 }
+      );
+    }
+
+    const [members, loans, payments] = await Promise.all([listMembers(), listLoans(), listPayments()]);
     const member = members.find((m) => m.member_id === member_id);
     if (!member) {
       return NextResponse.json(
@@ -90,9 +100,6 @@ export async function POST(request) {
       );
     }
 
-    // Verify loan exists, belongs to member, and is active
-    const rawLoans = await getRows('Loans');
-    const loans = rowsToObjects(rawLoans);
     const loan = loans.find((l) => l.loan_id === loan_id);
 
     if (!loan) {
@@ -114,8 +121,6 @@ export async function POST(request) {
       );
     }
 
-    const rawPayments = await getRows('Payments');
-    const payments = rowsToObjects(rawPayments);
     const payment_id = generatePaymentId(payments);
     const now = new Date().toISOString();
 
@@ -129,6 +134,7 @@ export async function POST(request) {
       status: 'active',
       created_at: now,
       updated_at: now,
+      payment_method: normalizedMethod,
     };
 
     // Calculate new balance
@@ -158,7 +164,7 @@ export async function POST(request) {
       action: 'RECORD_PAYMENT',
       entityType: 'Payments',
       entityId: payment_id,
-      details: { loan_id, member_id, amount_received: amount },
+      details: { loan_id, member_id, amount_received: amount, payment_method: normalizedMethod },
     });
 
     // Audit logging for loan state change

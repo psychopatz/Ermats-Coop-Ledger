@@ -1,6 +1,6 @@
 // app/api/member/login/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects } from '@/lib/googleSheets';
+import { listMembers } from '@/lib/repositories/ledgerRepository';
 import { setSessionCookie } from '@/lib/session';
 
 export async function POST(request) {
@@ -15,8 +15,7 @@ export async function POST(request) {
       );
     }
 
-    const rawRows = await getRows('Members');
-    const members = rowsToObjects(rawRows);
+    const members = await listMembers();
 
     // Find an active member with matching email and access code
     const member = members.find(

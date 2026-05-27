@@ -51,7 +51,7 @@ To use Google Sheets as the storage layer, you need a Google Service Account to 
 `loan_id | member_id | principal_amount | interest_rate | term_months | total_payable | balance | status | release_date | created_at | updated_at`
 
 #### Tab: `Payments`
-`payment_id | loan_id | member_id | payment_date | amount_received | received_by | status | created_at | updated_at`
+`payment_id | loan_id | member_id | payment_date | amount_received | received_by | status | created_at | updated_at | payment_method`
 
 #### Tab: `Audit_Log`
 `audit_id | timestamp | actor_email | action | entity_type | entity_id | details`
@@ -100,6 +100,7 @@ The server will start (usually on [http://localhost:3000](http://localhost:3000)
 - **Member portal sign-in:** [http://localhost:3000/member-login](http://localhost:3000/member-login)
 - **Admin sign-in:** [http://localhost:3000/admin-login](http://localhost:3000/admin-login)
 - **Admin control panel:** [http://localhost:3000/admin](http://localhost:3000/admin) (requires admin login first)
+- **Admin payments hub:** [http://localhost:3000/admin/payments](http://localhost:3000/admin/payments) (group payments by year, month, or week)
 
 ### API & Postman Testing
 Refer to [POSTMAN_TESTS.md](file:///home/psychopatz/Desktop/Projects/Coop%20Ledger/POSTMAN_TESTS.md) for full instructions, headers, request body JSON payloads, and the required login steps for admin/member session cookies.

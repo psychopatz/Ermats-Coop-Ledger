@@ -1,44 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function MemberDashboardClient({ session }) {
-  const [loans, setLoans] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+function getStatusBadgeClass(status) {
+  if (status === 'paid') {
+    return 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400';
+  }
+
+  if (status === 'partial') {
+    return 'bg-amber-500/10 border border-amber-500/30 text-amber-300';
+  }
+
+  return 'bg-slate-500/10 border border-slate-500/30 text-slate-300';
+}
+
+function formatRepaymentStatus(status) {
+  if (status === 'not_paid') {
+    return 'Not Paid';
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+export default function MemberDashboardClient({ session, initialData }) {
+  const { loans, payments, summary } = initialData;
 
   const router = useRouter();
-
-  useEffect(() => {
-    fetchData(session.member_id);
-  }, [session.member_id]);
-
-  const fetchData = async (memberId) => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const [loansRes, paymentsRes] = await Promise.all([
-        fetch(`/api/loans?member_id=${memberId}`),
-        fetch(`/api/payments?member_id=${memberId}`),
-      ]);
-
-      if (!loansRes.ok || !paymentsRes.ok) {
-        throw new Error('Failed to retrieve transaction records.');
-      }
-
-      const loansData = await loansRes.json();
-      const paymentsData = await paymentsRes.json();
-
-      setLoans(loansData);
-      setPayments(paymentsData);
-    } catch (err) {
-      setError(err.message || 'Error occurred while loading data.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -48,10 +35,6 @@ export default function MemberDashboardClient({ session }) {
       router.refresh();
     }
   };
-
-  const totalLoans = loans.length;
-  const totalPayable = loans.reduce((acc, curr) => acc + parseFloat(curr.total_payable || 0), 0);
-  const totalBalance = loans.reduce((acc, curr) => acc + parseFloat(curr.balance || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -82,34 +65,7 @@ export default function MemberDashboardClient({ session }) {
       </header>
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {error && (
-          <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 text-sm flex gap-3 items-center">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span>{error}</span>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="space-y-8 animate-pulse">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-28 bg-slate-900/60 border border-slate-850 rounded-2xl"></div>
-              ))}
-            </div>
-            <div className="space-y-4">
-              <div className="h-8 bg-slate-900 rounded w-1/4"></div>
-              <div className="h-48 bg-slate-900 border border-slate-850 rounded-2xl"></div>
-            </div>
-          </div>
-        ) : (
-          <>
+        <>
             <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 backdrop-blur-sm">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -125,12 +81,12 @@ export default function MemberDashboardClient({ session }) {
                 </p>
                 <p className="text-2xl font-bold text-indigo-400 mt-2">
                   $
-                  {totalPayable.toLocaleString(undefined, {
+                  {summary.total_payable.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">{totalLoans} configured loan(s)</p>
+                <p className="text-xs text-slate-500 mt-1">{summary.total_loans} configured loan(s)</p>
               </div>
 
               <div className="p-6 rounded-2xl border border-slate-900 bg-slate-900/40 backdrop-blur-sm">
@@ -139,7 +95,7 @@ export default function MemberDashboardClient({ session }) {
                 </p>
                 <p className="text-2xl font-bold text-emerald-400 mt-2">
                   $
-                  {totalBalance.toLocaleString(undefined, {
+                  {summary.total_balance.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -203,13 +159,9 @@ export default function MemberDashboardClient({ session }) {
                             <td className="px-6 py-4 text-slate-450">{loan.release_date}</td>
                             <td className="px-6 py-4 text-center">
                               <span
-                                className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                                  loan.status === 'paid'
-                                    ? 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400'
-                                    : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                                }`}
+                                className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${getStatusBadgeClass(loan.repayment_status)}`}
                               >
-                                {loan.status}
+                                {formatRepaymentStatus(loan.repayment_status)}
                               </span>
                             </td>
                           </tr>
@@ -232,14 +184,16 @@ export default function MemberDashboardClient({ session }) {
                         <th className="px-6 py-4">Loan ID</th>
                         <th className="px-6 py-4">Date</th>
                         <th className="px-6 py-4">Amount Received</th>
+                        <th className="px-6 py-4">Method</th>
                         <th className="px-6 py-4">Collector</th>
-                        <th className="px-6 py-4 text-center">Status</th>
+                        <th className="px-6 py-4 text-center">Repayment</th>
+                        <th className="px-6 py-4 text-center">Record</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900">
                       {payments.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-12 text-center text-slate-500 text-sm">
+                          <td colSpan="8" className="px-6 py-12 text-center text-slate-500 text-sm">
                             No payment transactions recorded.
                           </td>
                         </tr>
@@ -257,16 +211,24 @@ export default function MemberDashboardClient({ session }) {
                                 minimumFractionDigits: 2,
                               })}
                             </td>
+                            <td className="px-6 py-4 text-xs uppercase text-slate-350">{p.payment_method}</td>
                             <td className="px-6 py-4 text-xs text-slate-500">{p.received_by}</td>
                             <td className="px-6 py-4 text-center">
                               <span
+                                className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${getStatusBadgeClass(p.repayment_status)}`}
+                              >
+                                {formatRepaymentStatus(p.repayment_status)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span
                                 className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                                  p.status === 'voided'
+                                  p.record_status === 'voided'
                                     ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
                                     : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
                                 }`}
                               >
-                                {p.status}
+                                {p.record_status}
                               </span>
                             </td>
                           </tr>
@@ -277,8 +239,7 @@ export default function MemberDashboardClient({ session }) {
                 </div>
               </div>
             </section>
-          </>
-        )}
+        </>
       </main>
     </div>
   );

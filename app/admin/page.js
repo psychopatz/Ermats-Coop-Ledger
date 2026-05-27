@@ -1,14 +1,10 @@
 // app/admin/page.js
-import { redirect } from 'next/navigation';
-import { getAdminSession } from '@/lib/session';
+import { getAdminWorkspaceData } from '@/lib/services/dashboardData';
 import AdminDashboardClient from './AdminDashboardClient';
 
 export default async function AdminPage() {
-  const session = await getAdminSession();
+  const initialData = await getAdminWorkspaceData();
+  const today = new Date().toISOString().split('T')[0];
 
-  if (!session) {
-    redirect('/admin-login');
-  }
-
-  return <AdminDashboardClient session={session} />;
+  return <AdminDashboardClient initialData={initialData} today={today} />;
 }

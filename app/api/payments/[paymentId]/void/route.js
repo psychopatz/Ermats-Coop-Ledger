@@ -1,7 +1,8 @@
 // app/api/payments/[paymentId]/void/route.js
 import { NextResponse } from 'next/server';
-import { getRows, rowsToObjects, updateRow } from '@/lib/googleSheets';
+import { updateRow } from '@/lib/googleSheets';
 import { writeAuditLog } from '@/lib/auditLog';
+import { listLoans, listPayments } from '@/lib/repositories/ledgerRepository';
 import { getAdminSession } from '@/lib/session';
 
 export async function PATCH(request, { params }) {
@@ -24,8 +25,7 @@ export async function PATCH(request, { params }) {
     }
 
     // 1. Fetch payment
-    const rawPayments = await getRows('Payments');
-    const payments = rowsToObjects(rawPayments);
+    const [payments, loans] = await Promise.all([listPayments(), listLoans()]);
     const existingPayment = payments.find((p) => p.payment_id === paymentId);
 
     if (!existingPayment) {
@@ -43,8 +43,6 @@ export async function PATCH(request, { params }) {
     }
 
     // 2. Fetch associated loan
-    const rawLoans = await getRows('Loans');
-    const loans = rowsToObjects(rawLoans);
     const loan = loans.find((l) => l.loan_id === existingPayment.loan_id);
 
     if (!loan) {
